@@ -20,6 +20,7 @@ const router = useRouter();
 const { width, height } = Dimensions.get("window");
 
 export default function EcoGotchiHomeScreen() {
+  const router = useRouter();
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   // fonts
@@ -177,7 +178,7 @@ export default function EcoGotchiHomeScreen() {
             <TouchableOpacity
               style={[styles.buttonWrapper, { marginTop: -width * 0.29 }]}
               activeOpacity={0.8}
-              onPress={() => router.push("/screens/LoginScreen")}
+              onPress={() => router.push("/login")}
             >
               <ImageBackground
                 source={require("../../assets/images/white-dialogue-bg.png")}
