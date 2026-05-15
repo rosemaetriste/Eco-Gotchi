@@ -57,14 +57,16 @@ export const styles = StyleSheet.create({
   buttonsContainer: {
     width: "100%",
     alignItems: "center",
+    marginTop: 10,
     zIndex: 10,
   },
+
   buttonWrapper: {
     width: width * 0.75,
-    height: width * 0.75,
+    aspectRatio: 4,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: -width * 0.27,
+    marginVertical: 4,
   },
   buttonBackground: {
     width: "100%",
@@ -76,7 +78,7 @@ export const styles = StyleSheet.create({
     fontFamily: "Tiny5-Regular",
     fontSize: 19,
     textAlign: "center",
-    paddingTop: 33,
+    paddingTop: 3,
   },
   butterflyContainer: {
     position: "absolute",

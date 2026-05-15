@@ -15,8 +15,6 @@ import {
 } from "react-native";
 import { styles } from "./styles.js";
 
-const router = useRouter();
-
 const { width, height } = Dimensions.get("window");
 
 export default function EcoGotchiHomeScreen() {
@@ -163,20 +161,29 @@ export default function EcoGotchiHomeScreen() {
 
           {/* buttons */}
           <View style={styles.buttonsContainer}>
-            <TouchableOpacity style={styles.buttonWrapper} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.buttonWrapper}
+              activeOpacity={0.8}
+              onPress={() => router.push("/signup")}
+            >
               <ImageBackground
                 source={require("../../assets/images/green-dialogue.png")}
                 style={styles.buttonBackground}
                 resizeMode="contain"
               >
-                <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+                <Text
+                  style={[
+                    styles.buttonText,
+                    { color: "#FFFFFF", paddingLeft: 9 },
+                  ]}
+                >
                   START SPROUTING
                 </Text>
               </ImageBackground>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.buttonWrapper, { marginTop: -width * 0.29 }]}
+              style={styles.buttonWrapper}
               activeOpacity={0.8}
               onPress={() => router.push("/login")}
             >

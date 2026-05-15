@@ -9,6 +9,7 @@ import {
   Image,
   ImageBackground,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -19,17 +20,25 @@ import {
 
 const { width, height } = Dimensions.get("window");
 
-export default function LoginScreen() {
+export default function SignUpScreen() {
+  const router = useRouter();
+
   const [fontsLoaded, setFontsLoaded] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [accepted, setAccepted] = useState(false);
 
   // Validation States
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-
-  const router = useRouter();
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [termsError, setTermsError] = useState("");
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const blink = useRef(new Animated.Value(1)).current;
@@ -96,10 +105,13 @@ export default function LoginScreen() {
   }, [fontsLoaded]);
 
   // Validation Logic
-  const handleLogin = () => {
+  const handleSignUp = () => {
     let isValid = true;
+    
     setEmailError("");
     setPasswordError("");
+    setConfirmPasswordError("");
+    setTermsError("");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -119,8 +131,22 @@ export default function LoginScreen() {
       isValid = false;
     }
 
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password.");
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match.");
+      isValid = false;
+    }
+
+    if (!accepted) {
+      setTermsError("You must accept the terms to proceed.");
+      isValid = false;
+    }
+
     if (isValid) {
-      router.push("/(tabs)");
+      console.log("Sign up triggered securely");
+      router.push("/(tabs)"); 
     }
   };
 
@@ -133,7 +159,7 @@ export default function LoginScreen() {
       {/* Background Layer */}
       <View style={styles.backgroundContainer}>
         <Image
-          source={require("../../assets/images/login_bg.png")}
+          source={require("../../assets/images/blue_bg.png")}
           style={styles.backgroundImage}
           resizeMode="cover"
         />
@@ -149,7 +175,11 @@ export default function LoginScreen() {
         <Text style={styles.backArrow}>←</Text>
       </TouchableOpacity>
 
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <Animated.View style={[styles.inner, { opacity: fadeIn }]}>
           {/* Logo */}
           <Animated.View style={{ transform: [{ translateY: logoY }] }}>
@@ -160,11 +190,11 @@ export default function LoginScreen() {
             />
           </Animated.View>
 
-          {/* Welcome Back + LOGIN headline */}
-          <Text style={styles.headline}>Welcome Back!</Text>
+          {/* Headline */}
+          <Text style={styles.headline}>New Here?</Text>
 
           <View style={styles.subheadlineContainer}>
-            <Text style={styles.subheadline}>{"> LOGIN "}</Text>
+            <Text style={styles.subheadline}>{"> SIGN UP "}</Text>
 
             <Animated.Text style={[styles.subheadline, { opacity: blink }]}>
               {"_"}
@@ -173,8 +203,8 @@ export default function LoginScreen() {
 
           {/* Form Card */}
           <View style={styles.formCard}>
-            {/* Email Container */}
-            <View>
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
                 style={[styles.input, emailError ? styles.inputErrorBorder : null]}
@@ -188,12 +218,12 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              {emailError ? <Text style={styles.errorTextAbsolute}>{emailError}</Text> : null}
+              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
             </View>
 
-            {/* Password Container */}
-            <View>
-              <Text style={[styles.inputLabel, { marginTop: 24 }]}>Password</Text>
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
               <View style={[styles.passwordContainer, passwordError ? styles.inputErrorBorder : null]}>
                 <TextInput
                   style={styles.passwordInput}
@@ -218,33 +248,106 @@ export default function LoginScreen() {
                   />
                 </TouchableOpacity>
               </View>
-              {passwordError ? <Text style={styles.errorTextAbsolutePassword}>{passwordError}</Text> : null}
+              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
             </View>
 
-            {/* VISIT YOUR PET Button */}
-            <TouchableOpacity style={styles.buttonWrapper} activeOpacity={0.8} onPress={handleLogin}>
-              <ImageBackground
-                source={require("../../assets/images/green-dialogue.png")}
-                style={styles.buttonBackground}
-                resizeMode="contain"
-              >
-                <Text style={styles.buttonText}>VISIT YOUR PET</Text>
-              </ImageBackground>
-            </TouchableOpacity>
+            {/* Confirm Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Confirm Password</Text>
+              <View style={[styles.passwordContainer, confirmPasswordError ? styles.inputErrorBorder : null]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="••••••••••••••••"
+                  placeholderTextColor="rgba(91, 63, 45, 0.4)"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (confirmPasswordError) setConfirmPasswordError("");
+                  }}
+                  secureTextEntry={!showConfirmPassword}
+                />
 
-            {/* Forget Password */}
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push("/forgot-password")}
-            >
-              <Text style={styles.forgotText}>
-                Forget Password?{" "}
-                <Text style={styles.forgotLink}>Click Here</Text>
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#59483D"
+                  />
+                </TouchableOpacity>
+              </View>
+              {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
+            </View>
+
+            {/* Terms Checkbox */}
+            <View style={styles.checkboxGroup}>
+              <View style={styles.checkboxRow}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setAccepted(!accepted);
+                    if (termsError) setTermsError("");
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <View
+                    style={[
+                      styles.checkbox, 
+                      accepted && styles.checkboxChecked,
+                      termsError ? styles.checkboxErrorBorder : null
+                    ]}
+                  >
+                    {accepted && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+
+                <Text style={styles.checkboxText}>I accept the </Text>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/terms")}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 15, bottom: 15, left: 5, right: 5 }}
+                >
+                  <Text style={styles.checkboxLink}>policy and terms</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.checkboxText}>.</Text>
+              </View>
+              {termsError ? <Text style={styles.errorTextTerms}>{termsError}</Text> : null}
+            </View>
+
+            {/* Submit Button & Switch Link */}
+            <View style={styles.buttonZone}>
+              <TouchableOpacity
+                style={styles.buttonWrapper}
+                activeOpacity={0.8}
+                onPress={handleSignUp}
+              >
+                <ImageBackground
+                  source={require("../../assets/images/green-dialogue.png")}
+                  style={styles.buttonBackground}
+                  resizeMode="stretch"
+                >
+                  <Text style={styles.buttonText}>START SPROUTING</Text>
+                </ImageBackground>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push("/login")}
+                style={styles.loginWrapper}
+              >
+                <Text style={styles.loginText}>
+                  Already have an account?{" "}
+                  <Text style={styles.loginLink}>Login</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -252,16 +355,13 @@ export default function LoginScreen() {
 const LIGHT_BLACK = "#422F21";
 const LIGHT_BROWN = "#59483D";
 const DARK_BLACK = "#000000";
+const GREEN = "#4A7C4E";
 const ERROR_RED = "#D32F2F";
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: "#F0FBF5",
-  },
-
-  container: {
-    flex: 1,
   },
 
   backgroundContainer: {
@@ -275,6 +375,227 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: "100%",
     height: "100%",
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
+  },
+
+  inner: {
+    width: "100%",
+    alignItems: "center",
+    paddingTop: 1,
+  },
+
+  logoImage: {
+    width: width * 0.32,
+    aspectRatio: 1,
+    maxHeight: 200,
+    marginTop: -30,
+  },
+
+  headline: {
+    fontFamily: "System",
+    fontSize: 33,
+    fontWeight: "800",
+    color: LIGHT_BLACK,
+    textAlign: "center",
+    marginTop: -45,
+  },
+
+  subheadlineContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+    marginBottom: 20,
+  },
+
+  subheadline: {
+    fontFamily: "Tiny5-Regular",
+    fontSize: 23,
+    color: LIGHT_BROWN,
+  },
+
+  formCard: {
+    width: width * 0.75,
+    alignItems: "stretch",
+  },
+
+  // Standard vertical spacing for input layout
+  inputGroup: {
+    marginBottom: 16,
+    width: "100%",
+  },
+
+  inputLabel: {
+    fontFamily: "System",
+    fontSize: 13,
+    fontWeight: "600",
+    color: DARK_BLACK,
+    marginBottom: 6,
+    paddingLeft: 6,
+  },
+
+  input: {
+    width: "100%",
+    height: 45,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 35,
+    borderWidth: 1,
+    borderColor: "#373535",
+    paddingHorizontal: 20,
+    fontSize: 15,
+    color: DARK_BLACK,
+    elevation: 2,
+  },
+
+  passwordContainer: {
+    width: "100%",
+    height: 45,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 35,
+    borderWidth: 1,
+    borderColor: "#373535",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    elevation: 2,
+  },
+
+  passwordInput: {
+    flex: 1,
+    fontSize: 15,
+    color: DARK_BLACK,
+    height: "100%",
+  },
+
+  inputErrorBorder: {
+    borderColor: ERROR_RED,
+    borderWidth: 1.5,
+  },
+
+  checkboxErrorBorder: {
+    borderColor: ERROR_RED,
+  },
+
+  errorText: {
+    fontFamily: "System",
+    fontSize: 11,
+    color: ERROR_RED,
+    marginTop: 4,
+    paddingLeft: 12,
+  },
+
+  errorTextTerms: {
+    fontFamily: "System",
+    fontSize: 11,
+    color: ERROR_RED,
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  eyeButton: {
+    marginLeft: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100%",
+  },
+
+  checkboxGroup: {
+    marginTop: 4,
+    marginBottom: 13,
+    width: "100%",
+  },
+
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#373535",
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+
+  checkboxChecked: {
+    backgroundColor: GREEN,
+    borderColor: GREEN,
+  },
+
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+
+  checkboxText: {
+    fontFamily: "System",
+    fontSize: 13,
+    color: LIGHT_BROWN,
+  },
+
+  checkboxLink: {
+    fontFamily: "System",
+    fontSize: 13,
+    fontWeight: "600",
+    color: DARK_BLACK,
+    textDecorationLine: "underline",
+  },
+
+  buttonZone: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: -8,
+  },
+
+  buttonWrapper: {
+    width: "100%",
+    height: 65,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  buttonBackground: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  buttonText: {
+    fontFamily: "Tiny5-Regular",
+    fontSize: 18,
+    color: "#FFFFFF",
+    textAlign: "center",
+    includeFontPadding: false,
+    paddingTop: 6,
+    paddingLeft: 10,
+  },
+
+  loginWrapper: {
+    marginTop: 10,
+    marginBottom: 30,
+  },
+
+  loginText: {
+    fontFamily: "System",
+    fontSize: 13,
+    color: DARK_BLACK,
+    textAlign: "center",
+  },
+
+  loginLink: {
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 
   backButton: {
@@ -299,169 +620,5 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: LIGHT_BLACK,
     marginTop: -1,
-  },
-
-  inner: {
-    flex: 1,
-    alignItems: "center",
-    paddingTop: 1,
-  },
-
-  logoImage: {
-    width: width * 0.35,
-    aspectRatio: 1,
-    maxHeight: 225,
-    marginTop: -30,
-  },
-
-  headline: {
-    fontFamily: "System",
-    fontSize: 33,
-    fontWeight: "800",
-    color: LIGHT_BLACK,
-    textAlign: "center",
-    marginTop: -40,
-  },
-
-  subheadlineContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 2,
-    marginBottom: 15,
-  },
-
-  subheadline: {
-    fontFamily: "Tiny5-Regular",
-    fontSize: 23,
-    color: LIGHT_BROWN,
-  },
-
-  formCard: {
-    width: width * 0.8,
-    alignItems: "stretch",
-  },
-
-  inputLabel: {
-    fontFamily: "System",
-    fontSize: 16,
-    fontWeight: "500",
-    color: DARK_BLACK,
-    marginBottom: 6,
-    paddingLeft: 6,
-  },
-
-  input: {
-    width: "100%",
-    height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 35,
-    borderWidth: 1,
-    borderColor: "#373535",
-    paddingHorizontal: 20,
-    fontFamily: "System",
-    fontSize: 15,
-    color: DARK_BLACK,
-
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  passwordContainer: {
-    width: "100%",
-    height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 35,
-    borderWidth: 1,
-    borderColor: "#373535",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  passwordInput: {
-    flex: 1,
-    fontSize: 15,
-    color: DARK_BLACK,
-    height: "100%",
-  },
-
-  inputErrorBorder: {
-    borderColor: ERROR_RED,
-    borderWidth: 1.5,
-  },
-
-  errorTextAbsolute: {
-    position: "absolute",
-    bottom: -18,
-    left: 12,
-    fontFamily: "System",
-    fontSize: 11,
-    color: ERROR_RED,
-  },
-
-  errorTextAbsolutePassword: {
-    position: "absolute",
-    bottom: -18,
-    left: 12,
-    fontFamily: "System",
-    fontSize: 11,
-    color: ERROR_RED,
-  },
-
-  eyeButton: {
-    marginLeft: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100%",
-  },
-
-  buttonWrapper: {
-    width: "85%",
-    height: 65, 
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 18, 
-    alignSelf: "center",
-  },
-
-  buttonBackground: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  buttonText: {
-    fontFamily: "Tiny5-Regular",
-    fontSize: 17,
-    color: "#FFFFFF",
-    textAlign: "center",
-    paddingTop: 2,
-    paddingLeft: 2,
-  },
-
-  forgotText: {
-    fontFamily: "System",
-    fontSize: 13,
-    color: DARK_BLACK,
-    textAlign: "center",
-    marginTop: 5, 
-  },
-
-  forgotLink: {
-    fontFamily: "System",
-    fontSize: 13,
-    fontWeight: "600",
-    color: DARK_BLACK,
-    textDecorationLine: "underline",
   },
 });
