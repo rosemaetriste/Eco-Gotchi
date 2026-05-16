@@ -1,12 +1,8 @@
 {
-  "name": "ecogotchi-monorepo",
-  "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
+  "name": "ecogotchiapp",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
   "scripts": {
-<<<<<<< Updated upstream
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
@@ -48,10 +44,4 @@
     "eslint-config-expo": "~10.0.0"
   },
   "private": true
-=======
-    "start": "npm --workspace frontend start",
-    "backend": "npm --workspace backend start",
-    "bootstrap": "npm install"
-  }
->>>>>>> Stashed changes
 }
