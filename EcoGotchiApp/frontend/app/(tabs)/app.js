@@ -1,290 +1,297 @@
-// // App.js — Root entry point (React Native)
-// // Manages global state with useReducer; composes HomeScreen, LogsScreen, and tab navigation.
+// app/(tabs)/App.js
+// Root component. Owns all game state and logic, renders the tab bar,
+// and routes to the four tab screens plus Dead / Achievement overlays.
 
-// import React, { useReducer, useRef } from 'react';
-// import {
-//   View, Text, TouchableOpacity, SafeAreaView,
-//   StyleSheet, StatusBar,
-// } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from "react-native";
 
-// import HomeScreen from './home';
-// import LogsScreen from './logs';
-// import {
-//   STAGES, HEART_RECOVERY_SECONDS, makeRandomMissions, getStageProgress,
-// } from './shared';
+// ── Tab screens ──────────────────────────────────────────────────────────────
+import HomeScreen, { EcoModal, DeadScreen, MaxAchievementScreen } from "./home";
+import LogsScreen from "./logs";
+import ProgressScreen from "./progress";
+import AccountScreen from "./profile";
 
-// // ─── Initial State ────────────────────────────────────────────────────────────
+// ── Shared logic ─────────────────────────────────────────────────────────────
+import {
+  STAGES,
+  MAX_PTS,
+  SEEDS,
+  HEART_MS,
+  makeMissions,
+  getStageProgress,
+} from "../../components/constants";
 
-// function initialState() {
-//   return {
-//     petName: "Pet's Name",
-//     totalPoints: 0,
-//     todayPoints: 0,
-//     lives: 5,
-//     logs: [],
-//     missions: makeRandomMissions(),
-//     isDead: false,
-//     isMaxed: false,
-//     lostHeartRecoverAt: null, // timestamp when first heart started recovering
-//     retiredPlants: [],        // array of { name, totalPoints, totalLogs, retiredAt }
-//   };
-// }
+// ─── Tab navigation config ────────────────────────────────────────────────────
+const TABS = [
+  { key: "pet", icon: "🌿", label: "PET" },
+  { key: "logs", icon: "📋", label: "LOGS" },
+  { key: "progress", icon: "⭐", label: "PROGRESS" },
+  { key: "profile", icon: "👤", label: "PROFILE" },
+];
 
-// // ─── Reducer ──────────────────────────────────────────────────────────────────
+export default function App() {
+  // ── Game state ──────────────────────────────────────────────────────────────
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [todayPoints, setTodayPoints] = useState(0);
+  const [lives, setLives] = useState(5);
+  const [lostAt, setLostAt] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [missions, setMissions] = useState(makeMissions);
+  const [petName, setPetName] = useState("My Eco Plant");
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [plantHistory, setPlantHistory] = useState([]);
 
-// function reducer(state, action) {
-//   switch (action.type) {
+  // ── UI state ────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState("pet");
+  const [isDead, setIsDead] = useState(false);
+  const [isMaxed, setIsMaxed] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpText, setLevelUpText] = useState("");
+  const [now, setNow] = useState(Date.now());
 
-//     case 'SET_PET_NAME':
-//       return { ...state, petName: action.name };
+  // ── Animation refs ──────────────────────────────────────────────────────────
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const floatLoop = useRef(null);
 
-//     case 'ADD_POINTS': {
-//       const next = state.totalPoints + action.pts;
-//       const prevIdx = getStageProgress(state.totalPoints).stageIdx;
-//       const nextIdx = getStageProgress(next).stageIdx;
-//       const isMaxed = nextIdx === STAGES.length - 1 && prevIdx < STAGES.length - 1;
-//       return {
-//         ...state,
-//         totalPoints: next,
-//         todayPoints: state.todayPoints + action.pts,
-//         isMaxed: state.isMaxed || isMaxed,
-//       };
-//     }
+  const missionsRef = useRef(missions);
+  missionsRef.current = missions;
 
-//     case 'NEW_LOG': {
-//       const next = state.totalPoints + action.totalPts;
-//       const prevIdx = getStageProgress(state.totalPoints).stageIdx;
-//       const nextIdx = getStageProgress(next).stageIdx;
-//       const isMaxed = nextIdx === STAGES.length - 1 && prevIdx < STAGES.length - 1;
-//       return {
-//         ...state,
-//         logs: [action.log, ...state.logs],
-//         missions: action.updatedMissions,
-//         totalPoints: next,
-//         todayPoints: state.todayPoints + action.totalPts,
-//         isMaxed: state.isMaxed || isMaxed,
-//       };
-//     }
+  const { idx: stageIdx, current, max } = getStageProgress(totalPoints);
 
-//     case 'COMPLETE_MISSION': {
-//       const next = state.totalPoints + action.pts;
-//       const prevIdx = getStageProgress(state.totalPoints).stageIdx;
-//       const nextIdx = getStageProgress(next).stageIdx;
-//       const isMaxed = nextIdx === STAGES.length - 1 && prevIdx < STAGES.length - 1;
-//       return {
-//         ...state,
-//         missions: state.missions.map(m => m.id === action.id ? { ...m, completed: true } : m),
-//         totalPoints: next,
-//         todayPoints: state.todayPoints + action.pts,
-//         isMaxed: state.isMaxed || isMaxed,
-//       };
-//     }
+  const startFloat = useCallback(() => {
+    floatAnim.setValue(0);
+    floatLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -8,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    floatLoop.current.start();
+  }, [floatAnim]);
 
-//     case 'LOSE_HEART': {
-//       const newLives = Math.max(0, state.lives - 1);
-//       const isDead = newLives === 0;
-//       // Set recovery start timestamp only when going from 5 to first loss
-//       const lostHeartRecoverAt = state.lostHeartRecoverAt ?? (newLives < 5 ? Date.now() : null);
-//       return { ...state, lives: newLives, isDead, lostHeartRecoverAt };
-//     }
+  useEffect(() => {
+    startFloat();
+    return () => floatLoop.current && floatLoop.current.stop();
+  }, [startFloat]);
 
-//     case 'RECOVER_HEART': {
-//       // Called by a timer in production — restores 1 heart, shifts recovery timestamp
-//       if (state.lives >= 5) return state;
-//       const newLives = Math.min(5, state.lives + 1);
-//       const lostHeartRecoverAt = newLives < 5
-//         ? state.lostHeartRecoverAt + HEART_RECOVERY_SECONDS * 1000
-//         : null;
-//       return { ...state, lives: newLives, lostHeartRecoverAt };
-//     }
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
-//     case 'RESTART':
-//       return initialState();
+  useEffect(() => {
+    if (lostAt.length === 0) return;
+    if (now - lostAt[0] >= HEART_MS) {
+      setLostAt((prev) => prev.slice(1));
+      setLives((prev) => Math.min(5, prev + 1));
+    }
+  }, [now, lostAt]);
 
-//     case 'NEW_SEED': {
-//       // Retire the current plant to profile history, reset for new journey
-//       const retired = {
-//         name: state.petName,
-//         totalPoints: state.totalPoints,
-//         totalLogs: state.logs.length,
-//         retiredAt: Date.now(),
-//       };
-//       return {
-//         ...initialState(),
-//         retiredPlants: [...state.retiredPlants, retired],
-//       };
-//     }
+  const applyPoints = useCallback((pts) => {
+    if (pts <= 0) return;
+    setTodayPoints((p) => p + pts);
+    setTotalPoints((prev) => prev + pts);
+  }, []);
 
-//     default:
-//       return state;
-//   }
-// }
+  const handleLogEcoAction = useCallback(
+    (actionData) => {
+      const newLog = {
+        id: Date.now().toString(),
+        label: actionData.label,
+        distance: actionData.distance,
+        co2: actionData.co2,
+        points: actionData.points,
+        ts: Date.now(),
+      };
+      setLogs((prev) => [newLog, ...prev]);
+      applyPoints(actionData.points);
+    },
+    [applyPoints],
+  );
 
-// // ─── Profile Tab ──────────────────────────────────────────────────────────────
+  const handleLoseHeart = useCallback(() => {
+    setLives((prev) => {
+      const nextLives = Math.max(0, prev - 1);
+      if (nextLives === 0) {
+        setIsDead(true);
+      }
+      return nextLives;
+    });
+    setLostAt((prev) => [...prev, Date.now()]);
+  }, []);
 
-// function ProfileTab({ appState }) {
-//   const { petName, totalPoints, logs, retiredPlants } = appState;
+  const completeMission = useCallback(
+    (id) => {
+      const m = missions.find((ms) => ms.id === id && !ms.completed);
+      if (!m) return;
+      setMissions((prev) =>
+        prev.map((ms) => (ms.id === id ? { ...ms, completed: true } : ms)),
+      );
+      applyPoints(m.points);
+    },
+    [missions, applyPoints],
+  );
 
-//   return (
-//     <View style={profileStyles.container}>
-//       <View style={profileStyles.header}>
-//         <Text style={profileStyles.headerTitle}>👤 Profile</Text>
-//       </View>
+  const handleCommitName = useCallback(() => {
+    if (draftName.trim()) setPetName(draftName.trim());
+    setEditingName(false);
+  }, [draftName]);
 
-//       {/* Current plant summary */}
-//       <View style={profileStyles.currentCard}>
-//         <Text style={profileStyles.currentLabel}>Current Plant</Text>
-//         <Text style={profileStyles.currentName}>{petName}</Text>
-//         <View style={profileStyles.currentStats}>
-//           <View style={profileStyles.currentStat}>
-//             <Text style={profileStyles.currentStatVal}>{totalPoints.toLocaleString()}</Text>
-//             <Text style={profileStyles.currentStatLbl}>Eco Points</Text>
-//           </View>
-//           <View style={profileStyles.divider} />
-//           <View style={profileStyles.currentStat}>
-//             <Text style={profileStyles.currentStatVal}>{logs.length}</Text>
-//             <Text style={profileStyles.currentStatLbl}>Actions Logged</Text>
-//           </View>
-//         </View>
-//       </View>
+  const handleRestart = useCallback(() => {
+    setTotalPoints(0);
+    setTodayPoints(0);
+    setLives(5);
+    setLostAt([]);
+    setLogs([]);
+    setMissions(makeMissions());
+    setIsDead(false);
+    setIsMaxed(false);
+  }, []);
 
-//       {/* Retired plants */}
-//       <Text style={profileStyles.sectionTitle}>🌱 Previous Plants</Text>
-//       {retiredPlants.length === 0 ? (
-//         <View style={profileStyles.emptyWrap}>
-//           <Text style={profileStyles.emptyEmoji}>🪴</Text>
-//           <Text style={profileStyles.emptyText}>Your retired plants will appear here after reaching full Maturity.</Text>
-//         </View>
-//       ) : (
-//         retiredPlants.slice().reverse().map((p, i) => (
-//           <View key={i} style={profileStyles.retiredCard}>
-//             <View style={profileStyles.retiredLeft}>
-//               <Text style={profileStyles.retiredName}>{p.name}</Text>
-//               <Text style={profileStyles.retiredDate}>
-//                 Retired: {new Date(p.retiredAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-//               </Text>
-//             </View>
-//             <View style={profileStyles.retiredRight}>
-//               <Text style={profileStyles.retiredPoints}>{p.totalPoints.toLocaleString()} 🍃</Text>
-//               <Text style={profileStyles.retiredLogs}>{p.totalLogs} actions</Text>
-//             </View>
-//           </View>
-//         ))
-//       )}
-//     </View>
-//   );
-// }
+  const handleChooseSeed = useCallback(
+    (seedId) => {
+      const selectedSeed = SEEDS.find((s) => s.id === seedId);
+      setPlantHistory((prev) => [
+        ...prev,
+        {
+          name: petName,
+          points: totalPoints,
+          date: new Date().toLocaleDateString(),
+        },
+      ]);
+      setPetName(`New ${selectedSeed?.label || "Plant"}`);
+      handleRestart();
+    },
+    [petName, totalPoints, handleRestart],
+  );
 
-// const profileStyles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#f0faf0' },
-//   header: { backgroundColor: '#1a3a2a', padding: 20, paddingBottom: 18 },
-//   headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff' },
+  // ── Overlays Override Check ──
+  if (isDead) return <DeadScreen onRestart={handleRestart} />;
+  if (isMaxed)
+    return (
+      <MaxAchievementScreen
+        petName={petName}
+        totalPoints={totalPoints}
+        logCount={logs.length}
+        onChooseSeed={handleChooseSeed}
+      />
+    );
 
-//   currentCard: {
-//     margin: 14, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 16, padding: 18,
-//     borderWidth: 1.5, borderColor: '#b2d8b2',
-//   },
-//   currentLabel: { fontSize: 11, fontWeight: '800', color: '#52b788', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-//   currentName: { fontSize: 22, fontWeight: '900', color: '#1a3a2a', marginBottom: 14 },
-//   currentStats: { flexDirection: 'row', alignItems: 'center' },
-//   currentStat: { flex: 1, alignItems: 'center' },
-//   currentStatVal: { fontSize: 22, fontWeight: '900', color: '#52b788' },
-//   currentStatLbl: { fontSize: 11, color: '#6b7280', fontWeight: '600', marginTop: 2 },
-//   divider: { width: 1, height: 36, backgroundColor: '#d4edda' },
+  return (
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="#c8f0d0" />
 
-//   sectionTitle: { fontSize: 13, fontWeight: '800', color: '#1a3a2a', textTransform: 'uppercase', letterSpacing: 1, marginHorizontal: 14, marginBottom: 10 },
+      {/* ── Screen Wrapper View ── */}
+      <View style={{ flex: 1 }}>
+        {activeTab === "pet" && (
+          <HomeScreen
+            totalPoints={totalPoints}
+            todayPoints={todayPoints}
+            lives={lives}
+            lostAt={lostAt}
+            now={now}
+            logs={logs}
+            missions={missions}
+            petName={petName}
+            editingName={editingName}
+            draftName={draftName}
+            bounceAnim={bounceAnim}
+            floatAnim={floatAnim}
+            stageIdx={stageIdx}
+            current={current}
+            max={max}
+            onLoseHeart={handleLoseHeart}
+            onCompleteMission={completeMission}
+            onStartEditName={() => {
+              setDraftName(petName);
+              setEditingName(true);
+            }}
+            onCommitName={handleCommitName}
+            onDraftNameChange={setDraftName}
+            onViewAllLogs={() => setActiveTab("logs")}
+            onLogEcoAction={handleLogEcoAction}
+          />
+        )}
+        {activeTab === "logs" && (
+          <LogsScreen logs={logs} totalPoints={totalPoints} />
+        )}
+        {activeTab === "progress" && (
+          <ProgressScreen totalPoints={totalPoints} />
+        )}
+        {activeTab === "profile" && (
+          <AccountScreen
+            petName={petName}
+            totalPoints={totalPoints}
+            logCount={logs.length}
+            plantHistory={plantHistory}
+          />
+        )}
+      </View>
 
-//   emptyWrap: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 32 },
-//   emptyEmoji: { fontSize: 40, marginBottom: 10 },
-//   emptyText: { color: '#9ca3af', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+      {/* ── Simple Bottom Tab Navigation View ── */}
+      <SafeAreaView edges={["bottom"]} style={s.navBarWrapper}>
+        <View style={s.navBar}>
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                style={s.navItem}
+              >
+                <Text style={{ fontSize: 22, opacity: active ? 1 : 0.6 }}>
+                  {tab.icon}
+                </Text>
+                <Text
+                  style={[
+                    s.navLabel,
+                    active && { color: "#1a3a2a", fontWeight: "900" },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
 
-//   retiredCard: {
-//     marginHorizontal: 14, marginBottom: 10,
-//     backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 14, padding: 14,
-//     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-//     borderWidth: 1, borderColor: '#d4edda',
-//   },
-//   retiredLeft: { flex: 1 },
-//   retiredName: { fontSize: 15, fontWeight: '800', color: '#1a3a2a' },
-//   retiredDate: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
-//   retiredRight: { alignItems: 'flex-end' },
-//   retiredPoints: { fontSize: 15, fontWeight: '800', color: '#52b788' },
-//   retiredLogs: { fontSize: 11, color: '#6b7280', marginTop: 2 },
-// });
-
-// // ─── Root App ─────────────────────────────────────────────────────────────────
-
-// const NAV_TABS = [
-//   { key: 'PET',      icon: '🌿', label: 'PET'      },
-//   { key: 'LOGS',     icon: '📋', label: 'LOGS'     },
-//   { key: 'PROGRESS', icon: '⭐', label: 'PROGRESS' },
-//   { key: 'PROFILE',  icon: '👤', label: 'PROFILE'  },
-// ];
-
-// export default function App() {
-//   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-//   const [activeTab, setActiveTab] = useState('PET');
-
-//   return (
-//     <SafeAreaView style={appStyles.safe}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#c8f0d0" />
-
-//       {/* Main content */}
-//       <View style={appStyles.content}>
-//         {activeTab === 'PET' && (
-//           <HomeScreen appState={state} dispatch={dispatch} setActiveTab={setActiveTab} />
-//         )}
-//         {activeTab === 'LOGS' && (
-//           <LogsScreen appState={state} />
-//         )}
-//         {activeTab === 'PROGRESS' && (
-//           // Placeholder — wire up your progress/achievements screen here
-//           <View style={appStyles.placeholder}>
-//             <Text style={appStyles.placeholderText}>⭐ Progress coming soon</Text>
-//           </View>
-//         )}
-//         {activeTab === 'PROFILE' && (
-//           <ProfileTab appState={state} />
-//         )}
-//       </View>
-
-//       {/* Bottom navigation */}
-//       <View style={appStyles.nav}>
-//         {NAV_TABS.map(tab => (
-//           <TouchableOpacity
-//             key={tab.key}
-//             onPress={() => setActiveTab(tab.key)}
-//             style={appStyles.navBtn}>
-//             <Text style={appStyles.navIcon}>{tab.icon}</Text>
-//             <Text style={[appStyles.navLabel, activeTab === tab.key && appStyles.navLabelActive]}>
-//               {tab.label}
-//             </Text>
-//             {activeTab === tab.key && <View style={appStyles.navIndicator} />}
-//           </TouchableOpacity>
-//         ))}
-//       </View>
-//     </SafeAreaView>
-//   );
-// }
-
-// function useState(init) {
-//   return React.useState(init);
-// }
-
-// const appStyles = StyleSheet.create({
-//   safe: { flex: 1, backgroundColor: '#c8f0d0' },
-//   content: { flex: 1 },
-//   nav: {
-//     flexDirection: 'row', backgroundColor: 'rgba(240,250,240,0.97)',
-//     borderTopWidth: 1, borderTopColor: '#d4edda',
-//     paddingTop: 10, paddingBottom: 20,
-//   },
-//   navBtn: { flex: 1, alignItems: 'center', gap: 2 },
-//   navIcon: { fontSize: 22 },
-//   navLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: '#9ca3af', textTransform: 'uppercase' },
-//   navLabelActive: { color: '#1a3a2a' },
-//   navIndicator: { width: 18, height: 3, backgroundColor: '#52b788', borderRadius: 2, marginTop: 1 },
-
-//   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-//   placeholderText: { fontSize: 18, color: '#52b788', fontWeight: '700' },
-// });
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#c8f0d0" },
+  navBarWrapper: {
+    backgroundColor: "rgba(240, 252, 240, 0.98)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(82, 183, 136, 0.2)",
+  },
+  navBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 4 : 12,
+  },
+  navItem: { alignItems: "center", gap: 3, minWidth: 65 },
+  navLabel: { fontSize: 9, fontWeight: "700", color: "#8ca393" },
+});

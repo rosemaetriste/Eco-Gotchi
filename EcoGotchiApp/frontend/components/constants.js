@@ -1,17 +1,14 @@
-/**
- * constants.js
- * Shared constants, helpers, plant SVGs, shared UI components, and shared styles.
- * Import from every screen file.
- */
+// constants.js
+// Shared constants, helpers, plant SVGs, and reusable UI components.
+// Import from this file in home.js, logs.js, progress.js, account.js, and App.js.
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   Animated,
   StyleSheet,
-  Platform,
 } from "react-native";
 import Svg, {
   Path,
@@ -94,10 +91,9 @@ export const SEEDS = [
 ];
 
 export const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const HEART_MS = 24 * 60 * 60 * 1000; // 24 h in ms
 
-export const HEART_MS = 24 * 60 * 60 * 1000; // 24 hours in ms
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 export function makeMissions() {
   return [...MISSIONS_POOL]
@@ -123,10 +119,10 @@ export function getStageProgress(pts) {
 
 export function fmtDuration(ms) {
   if (ms <= 0) return "Ready to recover!";
-  const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const sec = totalSec % 60;
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${sec}s`;
   return `${sec}s`;
@@ -169,7 +165,6 @@ export function PlantSVG({ stageIdx }) {
         <Path d="M45 72 Q56 60 58 50 Q46 58 43 70 Z" fill="#52b788" />
       </Svg>
     );
-
   if (stageIdx === 1)
     return (
       <Svg width={90} height={130} viewBox="0 0 90 130">
@@ -187,7 +182,6 @@ export function PlantSVG({ stageIdx }) {
         <Path d="M45 62 Q62 50 64 36 Q50 46 44 60 Z" fill="#74c69d" />
       </Svg>
     );
-
   if (stageIdx === 2)
     return (
       <Svg width={90} height={130} viewBox="0 0 90 130">
@@ -207,7 +201,6 @@ export function PlantSVG({ stageIdx }) {
         <Ellipse cx="45" cy="27" rx="7" ry="6" fill="#f9a8d4" />
       </Svg>
     );
-
   if (stageIdx === 3)
     return (
       <Svg width={90} height={130} viewBox="0 0 90 130">
@@ -251,8 +244,6 @@ export function PlantSVG({ stageIdx }) {
         <Circle cx="45" cy="36" r="3.5" fill="#d97706" />
       </Svg>
     );
-
-  // stageIdx === 4  Maturing
   return (
     <Svg width={90} height={130} viewBox="0 0 90 130">
       <Path d="M22 95 Q24 120 45 122 Q66 120 68 95 Z" fill="#7c3aed" />
@@ -289,7 +280,7 @@ export function PlantSVG({ stageIdx }) {
 
 export function DeadPlantSVG() {
   return (
-    <Svg width="90" height="130" viewBox="0 0 90 130">
+    <Svg width={90} height={130} viewBox="0 0 90 130">
       <Path d="M22 95 Q24 120 45 122 Q66 120 68 95 Z" fill="#8b7355" />
       <Path
         d="M55 95 Q63 97 68 95 Q67 114 58 120 Q50 122 50 95 Z"
@@ -333,36 +324,32 @@ export function DeadPlantSVG() {
   );
 }
 
-// ─── Shared UI Components ─────────────────────────────────────────────────────
+// ─── Shared UI components ─────────────────────────────────────────────────────
 
 /**
- * Hearts — shows 5 heart icons (greyed when lost) + a SINGLE recovery timer
- * showing the oldest lost heart's countdown: "A Heart recovers in Xh Ym"
+ * Hearts row + single countdown timer.
+ * Fixed to prevent "Cannot read properties of undefined (reading 'length')" crashes.
  */
-export function Hearts({ lives, lostAt, now }) {
-  const lostCount = 5 - lives;
-  // Oldest lost heart = lostAt[0] (we push new ones to end, shift from front on recovery)
-  const oldestTs = lostCount > 0 && lostAt.length > 0 ? lostAt[0] : null;
-  const rem = oldestTs ? HEART_MS - (now - oldestTs) : null;
+export function Hearts({ lives = 5, lostAt = [], now = Date.now() }) {
+  // Ensure lostAt is treated as an array to prevent .length exceptions
+  const safeLostAt = Array.isArray(lostAt) ? lostAt : [];
+  const safeLives = typeof lives === "number" ? lives : 5;
+
+  const nextTs = safeLostAt.length > 0 ? safeLostAt[0] : null;
+  const rem = nextTs !== null ? HEART_MS - (now - nextTs) : null;
 
   return (
     <View>
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 3,
-          marginBottom: rem != null ? 5 : 0,
-        }}
-      >
+      <View style={{ flexDirection: "row", gap: 3, marginBottom: 4 }}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <Text key={i} style={{ fontSize: 19, opacity: i < lives ? 1 : 0.28 }}>
+          <Text key={i} style={{ fontSize: 18, opacity: i < safeLives ? 1 : 0.28 }}>
             ❤️
           </Text>
         ))}
       </View>
-      {rem != null && (
+      {rem !== null && rem > 0 && (
         <View style={sharedStyles.heartTimer}>
-          <Text style={{ fontSize: 12 }}>🕐</Text>
+          <Text style={{ fontSize: 11 }}>🕐</Text>
           <Text style={sharedStyles.heartTimerText}>
             A Heart recovers in {fmtDuration(rem)}
           </Text>
@@ -372,9 +359,6 @@ export function Hearts({ lives, lostAt, now }) {
   );
 }
 
-/**
- * ProgressBar — animated width fill
- */
 export function ProgressBar({ current, max, stageIdx }) {
   const pct = Math.min((current / max) * 100, 100);
   const animWidth = useRef(new Animated.Value(0)).current;
@@ -397,10 +381,10 @@ export function ProgressBar({ current, max, stageIdx }) {
         }}
       >
         <Text style={sharedStyles.progressLabel}>
-          Growth Stage: {STAGES[stageIdx].name}
+          Growth Stage: {STAGES[stageIdx]?.name || "Sprout"}
         </Text>
         <Text style={sharedStyles.progressNums}>
-          {current.toLocaleString()} / {max.toLocaleString()}
+          {(current || 0).toLocaleString()} / {(max || 100).toLocaleString()}
         </Text>
       </View>
       <View style={sharedStyles.progressTrack}>
@@ -418,7 +402,7 @@ export function ProgressBar({ current, max, stageIdx }) {
       </View>
       {stageIdx < STAGES.length - 1 ? (
         <Text style={sharedStyles.nextStageText}>
-          Next: {STAGES[stageIdx + 1].name}
+          Next: {STAGES[stageIdx + 1]?.name}
         </Text>
       ) : (
         <Text style={[sharedStyles.nextStageText, { color: "#fbbf24" }]}>
@@ -429,10 +413,8 @@ export function ProgressBar({ current, max, stageIdx }) {
   );
 }
 
-/**
- * MissionCard — single daily mission row
- */
 export function MissionCard({ mission, onComplete }) {
+  if (!mission) return null;
   return (
     <View
       style={[
@@ -455,7 +437,7 @@ export function MissionCard({ mission, onComplete }) {
         <Text style={{ fontSize: 20, marginLeft: 8 }}>✅</Text>
       ) : (
         <TouchableOpacity
-          onPress={() => onComplete(mission.id)}
+          onPress={() => onComplete && onComplete(mission.id)}
           style={sharedStyles.missionBtn}
         >
           <Text style={sharedStyles.missionBtnText}>Done ✓</Text>
@@ -465,10 +447,8 @@ export function MissionCard({ mission, onComplete }) {
   );
 }
 
-/**
- * LogItem — single log row used in both home and logs screens
- */
 export function LogItem({ log, last }) {
+  if (!log) return null;
   return (
     <View style={[sharedStyles.logItem, !last && sharedStyles.logItemBorder]}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -476,7 +456,7 @@ export function LogItem({ log, last }) {
           {log.label}
         </Text>
         <Text style={sharedStyles.logMeta}>
-          {log.distance} km · {log.co2.toFixed(3)} kg CO₂ saved
+          {log.distance} km · {(log.co2 || 0).toFixed(3)} kg CO₂ saved
         </Text>
       </View>
       <Text style={sharedStyles.logPts}>+{log.points} 🍃</Text>
@@ -484,16 +464,10 @@ export function LogItem({ log, last }) {
   );
 }
 
-/**
- * Card — white glass card container
- */
 export function Card({ children, style }) {
   return <View style={[sharedStyles.card, style]}>{children}</View>;
 }
 
-/**
- * SectionHeader — label + optional right element
- */
 export function SectionHeader({ label, right }) {
   return (
     <View
@@ -510,53 +484,25 @@ export function SectionHeader({ label, right }) {
   );
 }
 
-/**
- * GreenHeader — dark green header block used across log/profile/progress tabs
- */
-export function GreenHeader({ children }) {
-  return <View style={sharedStyles.greenHeader}>{children}</View>;
-}
-
-export function StatBox({ label, value }) {
-  return (
-    <View style={sharedStyles.statBox}>
-      <Text style={sharedStyles.statBoxLabel}>{label}</Text>
-      <Text style={sharedStyles.statBoxValue}>{value}</Text>
-    </View>
-  );
-}
-
-export function BackButton({ onPress, label = "← Back" }) {
-  return (
-    <TouchableOpacity onPress={onPress} style={sharedStyles.backBtn}>
-      <Text style={sharedStyles.backBtnText}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── Shared Styles ────────────────────────────────────────────────────────────
+// ─── Shared styles ────────────────────────────────────────────────────────────
 
 export const sharedStyles = StyleSheet.create({
-  // Hearts
   heartTimer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
     backgroundColor: "rgba(254,226,226,0.8)",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "#fca5a5",
+    marginTop: 2,
   },
   heartTimerText: {
     fontSize: 11,
     color: "#b91c1c",
     fontWeight: "800",
   },
-
-  // Progress bar
   progressLabel: {
     fontSize: 11,
     fontWeight: "700",
@@ -588,8 +534,6 @@ export const sharedStyles = StyleSheet.create({
     color: "#9ca3af",
     textAlign: "right",
   },
-
-  // Card
   card: {
     backgroundColor: "rgba(255,255,255,0.7)",
     borderRadius: 16,
@@ -602,8 +546,6 @@ export const sharedStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-
-  // Mission
   missionCard: {
     backgroundColor: "rgba(255,255,255,0.7)",
     borderRadius: 12,
@@ -645,8 +587,6 @@ export const sharedStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-
-  // Log item
   logItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -673,36 +613,38 @@ export const sharedStyles = StyleSheet.create({
     color: "#52b788",
     marginLeft: 8,
   },
-
-  // Logs container (white rounded box wrapping log rows)
   logsContainer: {
     backgroundColor: "rgba(255,255,255,0.75)",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
   },
-
-  // Green header
-  greenHeader: {
+  logsHeader: {
     backgroundColor: "#1a3a2a",
     padding: 22,
   },
-  greenHeaderTitle: {
+  logsHeaderSubLabel: {
     fontSize: 11,
     color: "#95d5b2",
     fontWeight: "800",
     letterSpacing: 2,
     textTransform: "uppercase",
   },
-  greenHeaderBigNum: {
+  logsHeaderTitle: {
+    fontSize: 17,
+    color: "#fff",
+    fontWeight: "900",
+  },
+  weeklyPts: {
     fontSize: 36,
     fontWeight: "900",
     color: "#fff",
-    lineHeight: 44,
-    marginBottom: 14,
+    lineHeight: 42,
   },
-
-  // Stats grid
+  statsGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
   statBox: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.1)",
@@ -720,8 +662,6 @@ export const sharedStyles = StyleSheet.create({
     color: "#fff",
     marginTop: 2,
   },
-
-  // Back button (white ghost style for dark headers)
   backBtn: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderWidth: 1,
@@ -734,37 +674,5 @@ export const sharedStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "800",
     color: "#d1fae5",
-  },
-
-  // Day tabs (logs)
-  dayTabsContainer: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderBottomWidth: 1,
-    borderBottomColor: "#d4edda",
-  },
-  dayTab: {
-    minWidth: 48,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    alignItems: "center",
-    gap: 2,
-    borderBottomWidth: 3,
-    borderBottomColor: "transparent",
-  },
-  dayTabActive: {
-    borderBottomColor: "#52b788",
-  },
-  dayTabDay: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    color: "#9ca3af",
-  },
-  dayTabDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "transparent",
   },
 });

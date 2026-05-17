@@ -169,7 +169,7 @@ export default function SignUpScreen() {
       <TouchableOpacity
         style={styles.backButton}
         activeOpacity={0.75}
-        onPress={() => router.push("/(tabs)")}
+        onPress={() => router.push("/(auth)")}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Text style={styles.backArrow}>←</Text>

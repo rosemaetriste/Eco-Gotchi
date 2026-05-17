@@ -1,126 +1,107 @@
-// logs.js — All logs-related UI components for EcoPlantPet
+// logs.js
+// Logs tab: weekly day-picker, day log list, full history page.
 
-const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
 
-export function getWeekDates() {
-  const today = new Date();
-  const day = today.getDay();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - day + i);
-    return d;
-  });
-}
+import {
+  DAYS,
+  sameDay,
+  getWeekDates,
+  LogItem,
+  sharedStyles,
+} from "../../components/constants";
 
-export function sameDay(a, b) {
+// ─── Full History Page ────────────────────────────────────────────────────────
+
+function FullHistoryPage({ logs, totalPoints, onBack }) {
   return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth()    === b.getMonth()    &&
-    a.getDate()     === b.getDate()
-  );
-}
-
-// ─── Single log row ───────────────────────────────────────────────────────────
-
-export function LogItem({ log, last }) {
-  return (
-    <div style={{
-      display:"flex", alignItems:"center", justifyContent:"space-between",
-      padding:"9px 0", borderBottom: last ? "none" : "1px solid #e8f5e9",
-    }}>
-      <div style={{ flex:1, minWidth:0 }}>
-        <p style={{ margin:0, fontSize:13, color:"#374151", fontWeight:600,
-          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-          {log.label}
-        </p>
-        <p style={{ margin:0, fontSize:11, color:"#9ca3af" }}>
-          {log.distance} km · {log.co2Saved.toFixed(3)} kg CO₂ saved
-        </p>
-      </div>
-      <span style={{ fontSize:13, fontWeight:800, color:"#52b788",
-        whiteSpace:"nowrap", marginLeft:8 }}>
-        +{log.points} 🍃
-      </span>
-    </div>
-  );
-}
-
-// ─── Full history page ────────────────────────────────────────────────────────
-
-export function FullHistoryPage({ logs, totalPoints, onBack }) {
-  return (
-    <div style={{ paddingBottom:140 }}>
-      <div style={{ background:"linear-gradient(135deg,#1a3a2a,#2d6a4f)", padding:"20px 18px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-          <button onClick={onBack} style={{
-            background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.25)",
-            borderRadius:20, padding:"5px 14px", fontSize:12, fontWeight:800,
-            color:"#d1fae5", cursor:"pointer", fontFamily:"inherit",
-          }}>← Back</button>
-          <h2 style={{ margin:0, fontSize:17, color:"#fff", fontWeight:900 }}>📜 Full Eco History</h2>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 14px" }}>
-            <p style={{ margin:0, fontSize:11, color:"#95d5b2", fontWeight:700 }}>ALL-TIME POINTS</p>
-            <p style={{ margin:"2px 0 0", fontSize:20, fontWeight:900, color:"#fff" }}>
+    <ScrollView>
+      {/* Header */}
+      <View style={sharedStyles.logsHeader}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 14,
+          }}
+        >
+          <TouchableOpacity onPress={onBack} style={sharedStyles.backBtn}>
+            <Text style={sharedStyles.backBtnText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={sharedStyles.logsHeaderTitle}>📜 Full Eco History</Text>
+        </View>
+        <View style={sharedStyles.statsGrid}>
+          <View style={sharedStyles.statBox}>
+            <Text style={sharedStyles.statBoxLabel}>ALL-TIME POINTS</Text>
+            <Text style={sharedStyles.statBoxValue}>
               {totalPoints.toLocaleString()} 🍃
-            </p>
-          </div>
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 14px" }}>
-            <p style={{ margin:0, fontSize:11, color:"#95d5b2", fontWeight:700 }}>TOTAL LOGS</p>
-            <p style={{ margin:"2px 0 0", fontSize:20, fontWeight:900, color:"#fff" }}>
-              {logs.length} actions
-            </p>
-          </div>
-        </div>
-      </div>
+            </Text>
+          </View>
+          <View style={sharedStyles.statBox}>
+            <Text style={sharedStyles.statBoxLabel}>TOTAL LOGS</Text>
+            <Text style={sharedStyles.statBoxValue}>{logs.length} actions</Text>
+          </View>
+        </View>
+      </View>
 
-      <div style={{ padding:"14px" }}>
+      <View style={{ padding: 14 }}>
         {logs.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"40px 0" }}>
-            <p style={{ fontSize:40, margin:"0 0 8px" }}>🌱</p>
-            <p style={{ color:"#9ca3af", fontSize:14 }}>No eco actions logged yet.</p>
-          </div>
+          <View style={{ alignItems: "center", paddingVertical: 40 }}>
+            <Text style={{ fontSize: 40, marginBottom: 8 }}>🌱</Text>
+            <Text style={{ color: "#9ca3af", fontSize: 14 }}>
+              No eco actions logged yet.
+            </Text>
+          </View>
         ) : (
-          <div style={{ background:"rgba(255,255,255,0.75)", borderRadius:16, padding:"4px 16px" }}>
+          <View style={sharedStyles.logsContainer}>
             {logs.map((log, i) => (
-              <div key={log.id} style={{
-                display:"flex", alignItems:"flex-start", justifyContent:"space-between",
-                padding:"11px 0",
-                borderBottom: i < logs.length - 1 ? "1px solid #e8f5e9" : "none",
-                gap:10,
-              }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, fontSize:13, color:"#1a3a2a", fontWeight:700 }}>
-                    {log.label}
-                  </p>
-                  <p style={{ margin:"2px 0 0", fontSize:11, color:"#6b7280" }}>
-                    {new Date(log.timestamp).toLocaleDateString("en-PH", {
-                      weekday:"short", month:"short", day:"numeric", year:"numeric",
+              <View
+                key={log.id}
+                style={[
+                  s.fullLogItem,
+                  i < logs.length - 1 && {
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#e8f5e9",
+                  },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fullLogLabel}>{log.label}</Text>
+                  <Text style={s.fullLogDate}>
+                    {new Date(log.ts).toLocaleDateString("en-PH", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
                     })}
-                  </p>
-                  <p style={{ margin:"1px 0 0", fontSize:11, color:"#9ca3af" }}>
-                    {log.distance} km · {log.co2Saved.toFixed(3)} kg CO₂ saved
-                  </p>
-                </div>
-                <span style={{ fontSize:14, fontWeight:800, color:"#52b788",
-                  whiteSpace:"nowrap", marginTop:2 }}>
-                  +{log.points} 🍃
-                </span>
-              </div>
+                  </Text>
+                  <Text style={sharedStyles.logMeta}>
+                    {log.distance} km · {log.co2.toFixed(3)} kg CO₂ saved
+                  </Text>
+                </View>
+                <Text style={sharedStyles.logPts}>+{log.points} 🍃</Text>
+              </View>
             ))}
-          </div>
+          </View>
         )}
-      </div>
-    </div>
+      </View>
+    </ScrollView>
   );
 }
 
-// ─── Weekly logs view (main Logs tab) ────────────────────────────────────────
+// ─── Logs Tab (default export) ────────────────────────────────────────────────
 
-export function LogsView({ logs, totalPoints }) {
-  const [selectedDay, setSelectedDay] = React.useState(new Date().getDay());
-  const [showFullHistory, setShowFullHistory] = React.useState(false);
+export default function LogsScreen({ logs, totalPoints }) {
+  const [selectedDay, setSelectedDay] = useState(new Date().getDay());
+  const [showFullHistory, setShowFullHistory] = useState(false);
 
   if (showFullHistory) {
     return (
@@ -132,114 +113,206 @@ export function LogsView({ logs, totalPoints }) {
     );
   }
 
-  const weekDates    = getWeekDates();
-  const weeklyPoints = logs
-    .filter(l => weekDates.some(wd => sameDay(new Date(l.timestamp), wd)))
-    .reduce((s, l) => s + l.points, 0);
-
-  const dayLogs = logs.filter(l =>
-    sameDay(new Date(l.timestamp), weekDates[selectedDay])
+  const weekDates = getWeekDates();
+  const weeklyPts = logs
+    .filter((l) => weekDates.some((wd) => sameDay(new Date(l.ts), wd)))
+    .reduce((sum, l) => sum + l.points, 0);
+  const dayLogs = logs.filter((l) =>
+    sameDay(new Date(l.ts), weekDates[selectedDay]),
   );
 
   return (
-    <div style={{ paddingBottom:140 }}>
-      {/* Header */}
-      <div style={{ background:"linear-gradient(135deg,#1a3a2a,#2d6a4f)", padding:"24px 18px 20px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
-          <p style={{ margin:0, fontSize:11, color:"#95d5b2", fontWeight:800,
-            letterSpacing:2, textTransform:"uppercase" }}>
+    <ScrollView stickyHeaderIndices={[1]}>
+      {/* Dark green header */}
+      <View style={sharedStyles.logsHeader}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 4,
+          }}
+        >
+          <Text style={sharedStyles.logsHeaderSubLabel}>
             This Week's Eco Points
-          </p>
-          <button onClick={() => setShowFullHistory(true)} style={{
-            background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.25)",
-            borderRadius:20, padding:"4px 12px", fontSize:11, fontWeight:800,
-            color:"#d1fae5", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap",
-          }}>View all →</button>
-        </div>
-        <p style={{ margin:"0 0 16px", fontSize:38, fontWeight:900, color:"#fff", lineHeight:1 }}>
-          {weeklyPoints.toLocaleString()} <span style={{ fontSize:22 }}>🍃</span>
-        </p>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 14px" }}>
-            <p style={{ margin:0, fontSize:11, color:"#95d5b2", fontWeight:700 }}>ALL-TIME POINTS</p>
-            <p style={{ margin:"2px 0 0", fontSize:20, fontWeight:900, color:"#fff" }}>
-              {totalPoints.toLocaleString()} 🍃
-            </p>
-          </div>
-          <div style={{ background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"10px 14px" }}>
-            <p style={{ margin:0, fontSize:11, color:"#95d5b2", fontWeight:700 }}>TOTAL LOGS</p>
-            <p style={{ margin:"2px 0 0", fontSize:20, fontWeight:900, color:"#fff" }}>
-              {logs.length} actions
-            </p>
-          </div>
-        </div>
-      </div>
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowFullHistory(true)}
+            style={sharedStyles.backBtn}
+          >
+            <Text style={sharedStyles.backBtnText}>View all →</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={[sharedStyles.weeklyPts, { marginBottom: 14 }]}>
+          {weeklyPts.toLocaleString()} 🍃
+        </Text>
+        <View style={sharedStyles.statsGrid}>
+          <View style={sharedStyles.statBox}>
+            <Text style={sharedStyles.statBoxLabel}>ALL-TIME 🍃</Text>
+            <Text style={sharedStyles.statBoxValue}>
+              {totalPoints.toLocaleString()}
+            </Text>
+          </View>
+          <View style={sharedStyles.statBox}>
+            <Text style={sharedStyles.statBoxLabel}>TOTAL LOGS</Text>
+            <Text style={sharedStyles.statBoxValue}>{logs.length} actions</Text>
+          </View>
+        </View>
+      </View>
 
-      {/* Day tab strip */}
-      <div style={{ background:"rgba(255,255,255,0.85)", borderBottom:"1px solid #d4edda", padding:"0 4px" }}>
-        <div style={{ display:"flex", overflowX:"auto" }}>
+      {/* Day tab strip — sticky */}
+      <View style={s.dayTabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {DAYS.map((d, i) => {
-            const date      = weekDates[i];
-            const hasLogs   = logs.some(l => sameDay(new Date(l.timestamp), date));
-            const isToday   = sameDay(date, new Date());
-            const isSelected = selectedDay === i;
+            const date = weekDates[i];
+            const hasLogs = logs.some((l) => sameDay(new Date(l.ts), date));
+            const isToday = sameDay(date, new Date());
+            const sel = selectedDay === i;
             return (
-              <button key={d} onClick={() => setSelectedDay(i)} style={{
-                flex:"0 0 auto", minWidth:46, padding:"10px 4px 8px",
-                background:"none", border:"none", cursor:"pointer",
-                display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-                fontFamily:"inherit",
-                borderBottom: isSelected ? "3px solid #52b788" : "3px solid transparent",
-                transition:"all 0.2s",
-              }}>
-                <span style={{ fontSize:10, fontWeight:800, letterSpacing:0.5,
-                  textTransform:"uppercase", color: isSelected ? "#1a3a2a" : "#9ca3af" }}>
+              <TouchableOpacity
+                key={d}
+                onPress={() => setSelectedDay(i)}
+                style={[s.dayTab, sel && s.dayTabActive]}
+              >
+                <Text style={[s.dayTabDay, sel && { color: "#1a3a2a" }]}>
                   {d}
-                </span>
-                <span style={{ fontSize:12, fontWeight:700,
-                  color: isSelected ? "#52b788" : isToday ? "#1a3a2a" : "#6b7280" }}>
+                </Text>
+                <Text
+                  style={[
+                    s.dayTabNum,
+                    sel
+                      ? { color: "#52b788" }
+                      : isToday
+                        ? { color: "#1a3a2a" }
+                        : { color: "#6b7280" },
+                  ]}
+                >
                   {date.getDate()}
-                </span>
-                <div style={{ width:5, height:5, borderRadius:"50%",
-                  background: hasLogs ? "#52b788" : "transparent" }}/>
-              </button>
+                </Text>
+                <View
+                  style={[
+                    s.dayTabDot,
+                    hasLogs && { backgroundColor: "#52b788" },
+                  ]}
+                />
+              </TouchableOpacity>
             );
           })}
-        </div>
-      </div>
+        </ScrollView>
+      </View>
 
       {/* Day content */}
-      <div style={{ padding:"14px" }}>
+      <View style={{ padding: 14 }}>
         {dayLogs.length > 0 && (
-          <div style={{
-            background:"rgba(255,255,255,0.7)", borderRadius:14, padding:"10px 16px",
-            marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center",
-          }}>
-            <span style={{ fontSize:13, fontWeight:700, color:"#1a3a2a" }}>
+          <View style={s.dayHeader}>
+            <Text style={s.dayHeaderLabel}>
               {DAYS[selectedDay]},{" "}
-              {weekDates[selectedDay].toLocaleDateString("en-PH",{ month:"short", day:"numeric" })}
-            </span>
-            <span style={{ fontSize:14, fontWeight:800, color:"#52b788" }}>
-              +{dayLogs.reduce((s, l) => s + l.points, 0)} 🍃
-            </span>
-          </div>
+              {weekDates[selectedDay].toLocaleDateString("en-PH", {
+                month: "short",
+                day: "numeric",
+              })}
+            </Text>
+            <Text style={s.dayHeaderPts}>
+              +{dayLogs.reduce((sum, l) => sum + l.points, 0)} 🍃
+            </Text>
+          </View>
         )}
 
         {dayLogs.length === 0 ? (
-          <div style={{ textAlign:"center", padding:"36px 0" }}>
-            <p style={{ fontSize:36, margin:"0 0 8px" }}>🌿</p>
-            <p style={{ color:"#9ca3af", fontSize:14, margin:0 }}>
+          <View style={{ alignItems: "center", paddingVertical: 36 }}>
+            <Text style={{ fontSize: 36, marginBottom: 8 }}>🌿</Text>
+            <Text style={{ color: "#9ca3af", fontSize: 14 }}>
               No eco actions logged on this day.
-            </p>
-          </div>
+            </Text>
+          </View>
         ) : (
-          <div style={{ background:"rgba(255,255,255,0.75)", borderRadius:16, padding:"4px 16px" }}>
+          <View style={sharedStyles.logsContainer}>
             {dayLogs.map((log, i) => (
               <LogItem key={log.id} log={log} last={i === dayLogs.length - 1} />
             ))}
-          </div>
+          </View>
         )}
-      </div>
-    </div>
+      </View>
+    </ScrollView>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  // Day tab strip
+  dayTabsContainer: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderBottomWidth: 1,
+    borderBottomColor: "#d4edda",
+  },
+  dayTab: {
+    minWidth: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: "center",
+    gap: 2,
+    borderBottomWidth: 3,
+    borderBottomColor: "transparent",
+  },
+  dayTabActive: {
+    borderBottomColor: "#52b788",
+  },
+  dayTabDay: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    color: "#9ca3af",
+  },
+  dayTabNum: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  dayTabDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "transparent",
+  },
+
+  // Day summary header
+  dayHeader: {
+    backgroundColor: "rgba(255,255,255,0.7)",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dayHeaderLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1a3a2a",
+  },
+  dayHeaderPts: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#52b788",
+  },
+
+  // Full history log item
+  fullLogItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingVertical: 11,
+    gap: 10,
+  },
+  fullLogLabel: {
+    fontSize: 13,
+    color: "#1a3a2a",
+    fontWeight: "700",
+  },
+  fullLogDate: {
+    fontSize: 11,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+});

@@ -1,82 +1,12 @@
-import { Tabs } from "expo-router";
-import { StyleSheet } from "react-native";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { HapticTab } from "@/components/haptic-tab";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { AppStateProvider } from "./_context";
+// frontend/app/_layout.tsx
+import { Stack } from "expo-router";
 
-function TabLayoutContent() {
-  const colorScheme = useColorScheme();
-
+export default function RootLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        tabBarInactiveTintColor: "#A08A9F",
-        tabBarButton: HapticTab,
-        tabBarStyle: styles.tabBar,
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Plant",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="heart.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="logs"
-        options={{
-          title: "Logs",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="doc.text.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="progress"
-        options={{
-          title: "Progress",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="chart.bar.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.fill" color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <Stack>
+      {/* Hides the default headers and prevents any extra root navigation bars */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+    </Stack>
   );
 }
-
-// Wrap the TabLayout with the provider so state is shared between all screens within the tabs folder
-export default function TabLayout() {
-  return (
-    <AppStateProvider>
-      <TabLayoutContent />
-    </AppStateProvider>
-  );
-}
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: "#F8E8F6",
-    borderTopColor: "#EAD7E9",
-    height: 72,
-    paddingBottom: 10,
-    shadowColor: "#C8B0D5",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-});
