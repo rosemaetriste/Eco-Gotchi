@@ -44,6 +44,8 @@ export function EcoModal({ visible, onClose, onSubmit }) {
   const [error, setError] = useState("");
   const [showPicker, setShowPicker] = useState(false);
 
+  const API_BASE_URL = "http://localhost:4000"; // Update to the backend host for your emulator/device.
+
   const reset = () => {
     setSelectedIdx(0);
     setDistance("");
@@ -64,23 +66,66 @@ export function EcoModal({ visible, onClose, onSubmit }) {
       setError("Please enter a valid distance.");
       return;
     }
+
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
 
-    // Fallback block to prevent reading rate of undefined if selectedIdx is corrupt
-    const action = TRANSPORT_ACTIONS?.[selectedIdx] ||
-      TRANSPORT_ACTIONS?.[0] || { rate: 0 };
-    const co2 = d * (action.rate || 0);
-    const pts = Math.round(co2 * 100 + d * 2);
-    setResult({ co2, points: pts, distance: d });
-    setLoading(false);
+    const action = TRANSPORT_ACTIONS?.[selectedIdx] || TRANSPORT_ACTIONS?.[0] || { rate: 0.12, label: "Eco Action" };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/estimate-carbon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transportId: action.id, distance: d }),
+      });
+      const payload = await response.json();
+
+      const co2 = Number(payload.co2) || d * (action.rate || 0.12);
+      const points = Number(payload.points) || Math.round(co2 * 100 + d * 2);
+
+      if (!response.ok && payload.error) {
+        setError("Carbon Interface was unavailable. Showing fallback estimate.");
+      }
+
+      setResult({
+        co2,
+        points,
+        distance: d,
+        warning: payload.warning,
+      });
+    } catch (err) {
+      const co2 = d * (action.rate || 0.12);
+      const points = Math.round(co2 * 100 + d * 2);
+
+      setError("Unable to reach Carbon Interface. Using local fallback.");
+      setResult({ co2, points, distance: d });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLog = () => {
+  const handleLog = async () => {
     if (!result) return;
-    const action = TRANSPORT_ACTIONS?.[selectedIdx] ||
-      TRANSPORT_ACTIONS?.[0] || { label: "Unknown Action" };
+
+    const action = TRANSPORT_ACTIONS?.[selectedIdx] || TRANSPORT_ACTIONS?.[0] || { label: "Unknown Action", id: "unknown" };
+
+    try {
+      await fetch(`${API_BASE_URL}/api/logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "demo-user",
+          transportId: action.id,
+          label: action.label,
+          distance: result.distance,
+          co2: result.co2,
+          points: result.points,
+        }),
+      });
+    } catch (err) {
+      console.warn("Unable to save log to backend:", err);
+    }
+
     onSubmit({
       label: action.label,
       distance: result.distance,
@@ -424,7 +469,7 @@ export default function HomeScreen({
     <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 140 }} // Spacing allocation so content doesn't hide behind the sticky button
+        contentContainerStyle={{ paddingTop: 22, paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hearts + name row */}

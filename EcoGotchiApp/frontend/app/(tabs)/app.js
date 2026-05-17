@@ -28,7 +28,10 @@ import {
   HEART_MS,
   makeMissions,
   getStageProgress,
+  sameDay,
 } from "../../components/constants";
+
+import { fetchLogsForUser, saveLogToFirestore } from "../../firebase";
 
 // ─── Tab navigation config ────────────────────────────────────────────────────
 const TABS = [
@@ -100,6 +103,27 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    async function loadSavedLogs() {
+      try {
+        const savedLogs = await fetchLogsForUser("demo-user");
+        if (!savedLogs || savedLogs.length === 0) return;
+
+        setLogs(savedLogs);
+        setTotalPoints(savedLogs.reduce((sum, log) => sum + (log.points || 0), 0));
+        setTodayPoints(
+          savedLogs
+            .filter((log) => sameDay(new Date(log.ts), new Date()))
+            .reduce((sum, log) => sum + (log.points || 0), 0),
+        );
+      } catch (error) {
+        console.warn("Unable to load saved logs from Firebase:", error);
+      }
+    }
+
+    loadSavedLogs();
+  }, []);
+
+  useEffect(() => {
     if (lostAt.length === 0) return;
     if (now - lostAt[0] >= HEART_MS) {
       setLostAt((prev) => prev.slice(1));
@@ -122,9 +146,13 @@ export default function App() {
         co2: actionData.co2,
         points: actionData.points,
         ts: Date.now(),
+        userId: "demo-user",
       };
       setLogs((prev) => [newLog, ...prev]);
       applyPoints(actionData.points);
+      saveLogToFirestore(newLog).catch((error) => {
+        console.warn("Failed to persist log to Firebase:", error);
+      });
     },
     [applyPoints],
   );

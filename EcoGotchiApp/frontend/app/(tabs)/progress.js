@@ -15,7 +15,7 @@ export default function ProgressScreen({ totalPoints }) {
       : `${(STAGES[idx].max - current).toLocaleString()} pts`;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 30 }}>
+    <ScrollView contentContainerStyle={{ padding: 14, paddingTop: 24, paddingBottom: 30 }}>
       {/* Overall banner */}
       <View style={s.banner}>
         <Text style={s.bannerSubLabel}>Overall Progress</Text>

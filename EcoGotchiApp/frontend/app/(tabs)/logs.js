@@ -22,7 +22,7 @@ import {
 
 function FullHistoryPage({ logs, totalPoints, onBack }) {
   return (
-    <ScrollView>
+    <ScrollView contentContainerStyle={{ paddingTop: 20, paddingBottom: 30 }}>
       {/* Header */}
       <View style={sharedStyles.logsHeader}>
         <View
@@ -122,7 +122,7 @@ export default function LogsScreen({ logs, totalPoints }) {
   );
 
   return (
-    <ScrollView stickyHeaderIndices={[1]}>
+    <ScrollView stickyHeaderIndices={[1]} contentContainerStyle={{ paddingTop: 20, paddingBottom: 30 }}>
       {/* Dark green header */}
       <View style={sharedStyles.logsHeader}>
         <View
