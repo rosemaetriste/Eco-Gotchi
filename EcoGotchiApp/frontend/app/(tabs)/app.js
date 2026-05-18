@@ -9,10 +9,10 @@ import {
   TouchableOpacity,
   Animated,
   StyleSheet,
+  SafeAreaView,
   StatusBar,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 // ── Tab screens ──────────────────────────────────────────────────────────────
 import HomeScreen, { EcoModal, DeadScreen, MaxAchievementScreen } from "./home";
@@ -53,6 +53,10 @@ export default function App() {
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [plantHistory, setPlantHistory] = useState([]);
+
+  // allTimeTotalPoints: sum of ALL past journeys + current journey — never resets
+  const allTimeTotalPoints =
+    plantHistory.reduce((sum, h) => sum + (h.pts || 0), 0) + totalPoints;
 
   // ── UI state ────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("pet");
@@ -109,9 +113,7 @@ export default function App() {
         if (!savedLogs || savedLogs.length === 0) return;
 
         setLogs(savedLogs);
-        setTotalPoints(
-          savedLogs.reduce((sum, log) => sum + (log.points || 0), 0),
-        );
+        setTotalPoints(savedLogs.reduce((sum, log) => sum + (log.points || 0), 0));
         setTodayPoints(
           savedLogs
             .filter((log) => sameDay(new Date(log.ts), new Date()))
@@ -125,6 +127,7 @@ export default function App() {
     loadSavedLogs();
   }, []);
 
+  // ── Auto heart recovery ──────────────────────────────────────────────────────
   useEffect(() => {
     if (lostAt.length === 0) return;
     if (now - lostAt[0] >= HEART_MS) {
@@ -132,6 +135,13 @@ export default function App() {
       setLives((prev) => Math.min(5, prev + 1));
     }
   }, [now, lostAt]);
+
+  // ── Max / isMaxed trigger ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (totalPoints >= MAX_PTS && !isMaxed) {
+      setIsMaxed(true);
+    }
+  }, [totalPoints, isMaxed]);
 
   const applyPoints = useCallback((pts) => {
     if (pts <= 0) return;
@@ -198,25 +208,28 @@ export default function App() {
     setIsMaxed(false);
   }, []);
 
-  const handleChooseSeed = useCallback(
-    (seedId) => {
-      const selectedSeed = SEEDS.find((s) => s.id === seedId);
-      setPlantHistory((prev) => [
-        ...prev,
-        {
-          name: petName,
-          points: totalPoints,
-          date: new Date().toLocaleDateString(),
-        },
-      ]);
-      setPetName(`New ${selectedSeed?.label || "Plant"}`);
-      handleRestart();
-    },
-    [petName, totalPoints, handleRestart],
-  );
+  // ── handleChooseSeed: saves current plant (with logs snapshot) to history,
+  //    resets everything including the pet name for the new journey ──────────────
+  const handleChooseSeed = useCallback(() => {
+    setPlantHistory((prev) => [
+      {
+        name:    petName,
+        pts:     totalPoints,
+        actions: logs.length,
+        at:      Date.now(),
+        emoji:   "🌱",
+        logs:    logs, // full snapshot so logs tab can show per-plant history
+      },
+      ...prev,
+    ]);
+    // Reset pet name to default so user names their new plant
+    setPetName("My Eco Plant");
+    handleRestart();
+  }, [petName, totalPoints, logs, handleRestart]);
 
-  // ── Overlays Override Check ──
+  // ── Overlays: Dead and Maxed take over the whole screen ─────────────────────
   if (isDead) return <DeadScreen onRestart={handleRestart} />;
+
   if (isMaxed)
     return (
       <MaxAchievementScreen
@@ -224,12 +237,16 @@ export default function App() {
         totalPoints={totalPoints}
         logCount={logs.length}
         onChooseSeed={handleChooseSeed}
+        replantCount={plantHistory.length}
       />
     );
 
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#c8f0d0" />
+
+      {/* ── Top padding so content clears the device status bar ── */}
+      <View style={s.topSpacer} />
 
       {/* ── Screen Wrapper View ── */}
       <View style={{ flex: 1 }}>
@@ -263,7 +280,13 @@ export default function App() {
           />
         )}
         {activeTab === "logs" && (
-          <LogsScreen logs={logs} totalPoints={totalPoints} />
+          <LogsScreen
+            logs={logs}
+            totalPoints={totalPoints}
+            plantHistory={plantHistory}
+            petName={petName}
+            allTimeTotalPoints={allTimeTotalPoints}
+          />
         )}
         {activeTab === "progress" && (
           <ProgressScreen totalPoints={totalPoints} />
@@ -272,8 +295,12 @@ export default function App() {
           <AccountScreen
             petName={petName}
             totalPoints={totalPoints}
+            allTimeTotalPoints={allTimeTotalPoints}
             logCount={logs.length}
             plantHistory={plantHistory}
+            lives={lives}
+            lostAt={lostAt}
+            now={now}
           />
         )}
       </View>
@@ -311,6 +338,10 @@ export default function App() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#c8f0d0" },
+  // Pushes content below the device status bar on Android; iOS uses SafeAreaView naturally
+  topSpacer: {
+    height: Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) + 8 : 14,
+  },
   navBarWrapper: {
     backgroundColor: "rgba(240, 252, 240, 0.98)",
     borderTopWidth: 1,

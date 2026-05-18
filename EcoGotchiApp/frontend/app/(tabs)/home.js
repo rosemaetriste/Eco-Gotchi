@@ -135,7 +135,6 @@ export function EcoModal({ visible, onClose, onSubmit }) {
     handleClose();
   };
 
-  // Safe reference mapping for label UI
   const currentActionLabel =
     TRANSPORT_ACTIONS?.[selectedIdx]?.label ||
     TRANSPORT_ACTIONS?.[0]?.label ||
@@ -148,10 +147,8 @@ export function EcoModal({ visible, onClose, onSubmit }) {
       animationType="fade"
       onRequestClose={handleClose}
     >
-      {/* Full-screen dimmed backdrop — tap outside to close */}
       <TouchableWithoutFeedback onPress={handleClose}>
         <View style={s.modalOverlay}>
-          {/* Modal card — centered, tap inside does NOT close */}
           <TouchableWithoutFeedback>
             <View style={s.modalCard}>
               {/* Header */}
@@ -320,6 +317,8 @@ export function DeadScreen({ onRestart }) {
 }
 
 // ─── Max Achievement Screen ───────────────────────────────────────────────────
+// Seed type selection removed — single "Plant a New Eco-Seed" button.
+// onChooseSeed is called with no argument; App.js handles the reset.
 
 export function MaxAchievementScreen({
   petName,
@@ -327,14 +326,15 @@ export function MaxAchievementScreen({
   logCount,
   onChooseSeed,
 }) {
-  const [chosen, setChosen] = useState(null);
-
   return (
     <ScrollView
       style={s.maxScreen}
       contentContainerStyle={{
+        flexGrow: 1,
         alignItems: "center",
+        justifyContent: "center",
         paddingBottom: 60,
+        paddingTop: 40,
         paddingHorizontal: 18,
       }}
     >
@@ -384,39 +384,17 @@ export function MaxAchievementScreen({
       </View>
 
       <Text style={s.maxNote}>
-        Journey saved to your Profile. Choose your next seed:
+        Your journey has been saved to your Profile.{"\n"}Ready to start a new eco adventure?
       </Text>
 
-      <View style={{ width: "100%", gap: 10 }}>
-        {(SEEDS || []).map((seed) => {
-          const isSel = chosen === seed?.id;
-          return (
-            <TouchableOpacity
-              key={seed?.id}
-              onPress={() => setChosen(seed?.id)}
-              style={[s.seedOption, isSel && s.seedOptionActive]}
-            >
-              <Text style={{ fontSize: 28 }}>{seed?.emoji || "🌱"}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={s.seedLabel}>{seed?.label || "Unknown Seed"}</Text>
-                <Text style={s.seedDesc}>
-                  {seed?.desc || "No description available."}
-                </Text>
-              </View>
-              {isSel && <Text style={{ fontSize: 18 }}>✅</Text>}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {chosen && (
-        <TouchableOpacity
-          onPress={() => onChooseSeed(chosen)}
-          style={s.startJourneyBtn}
-        >
-          <Text style={s.startJourneyText}>🚀 Start New Journey!</Text>
-        </TouchableOpacity>
-      )}
+      {/* Single CTA button — no seed picker */}
+      <TouchableOpacity
+        onPress={onChooseSeed}
+        style={s.startJourneyBtn}
+        activeOpacity={0.85}
+      >
+        <Text style={s.startJourneyText}>🌱 Plant a New Eco-Seed</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -442,7 +420,7 @@ export default function HomeScreen({
   onCommitName,
   onDraftNameChange,
   onViewAllLogs,
-  onLogEcoAction, // Callback interface trigger mapping pass
+  onLogEcoAction,
   stageIdx = 0,
   current = 0,
   max = 100,
@@ -626,7 +604,7 @@ export default function HomeScreen({
         )}
       </ScrollView>
 
-      {/* True Absolute Floating Sticky Action Trigger Component */}
+      {/* Floating Action Button */}
       <TouchableOpacity
         style={s.floatingActionButton}
         onPress={() => setModalVisible(true)}
@@ -636,7 +614,7 @@ export default function HomeScreen({
         <Text style={s.floatingActionButtonText}>New Eco-Action</Text>
       </TouchableOpacity>
 
-      {/* Functional Eco Actions Input Modal */}
+      {/* Eco Action Modal */}
       <EcoModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -649,10 +627,9 @@ export default function HomeScreen({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Detached Floating Button Styling Configurations
   floatingActionButton: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 20 : 15, // Clean alignment above your primary screen tab item height
+    bottom: Platform.OS === "ios" ? 20 : 15,
     right: 20,
     flexDirection: "row",
     backgroundColor: "#1a3a2a",
@@ -827,7 +804,6 @@ const s = StyleSheet.create({
     marginTop: 10,
   },
 
-  // Test button
   testBtn: {
     backgroundColor: "rgba(239,68,68,0.12)",
     borderWidth: 1,
@@ -842,7 +818,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Pet name
   nameInput: {
     fontSize: 17,
     fontWeight: "800",
@@ -874,7 +849,6 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Plant circle
   plantCircle: {
     width: 150,
     height: 150,
@@ -901,7 +875,6 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // Today eco
   todayPtsBox: {
     backgroundColor: "#1a3a2a",
     borderRadius: 14,
@@ -939,7 +912,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Heart warning
   heartWarning: {
     margin: 14,
     marginTop: 10,
@@ -955,7 +927,6 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Dead screen
   deadScreen: {
     flex: 1,
     alignItems: "center",
@@ -1021,7 +992,6 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // Max achievement screen
   maxScreen: {
     flex: 1,
     backgroundColor: "#064e3b",
@@ -1085,50 +1055,29 @@ const s = StyleSheet.create({
   },
   maxNote: {
     color: "#d1fae5",
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
-    marginBottom: 14,
+    marginBottom: 24,
+    lineHeight: 20,
   },
-  seedOption: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.15)",
-    borderRadius: 14,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  seedOptionActive: {
-    backgroundColor: "rgba(82,183,136,0.3)",
-    borderColor: "#52b788",
-  },
-  seedLabel: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#d1fae5",
-  },
-  seedDesc: {
-    fontSize: 12,
-    color: "#95d5b2",
-    marginTop: 2,
-  },
+  // Single CTA button (replaces seed options + conditional button)
   startJourneyBtn: {
-    marginTop: 20,
-    backgroundColor: "#fbbf24",
+    backgroundColor: "#52b788",
     borderRadius: 28,
     paddingHorizontal: 36,
-    paddingVertical: 14,
+    paddingVertical: 16,
     elevation: 4,
-    shadowColor: "#fbbf24",
+    shadowColor: "#52b788",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
     marginBottom: 20,
+    alignItems: "center",
+    width: "100%",
   },
   startJourneyText: {
-    color: "#1a3a2a",
-    fontSize: 15,
+    color: "#fff",
+    fontSize: 16,
     fontWeight: "900",
   },
 });
