@@ -1,12 +1,11 @@
 import * as Font from "expo-font";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Image,
   ImageBackground,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,11 +13,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 
 export default function TermsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const fadeIn = useRef(new Animated.Value(0)).current;
 
@@ -68,7 +69,7 @@ export default function TermsScreen() {
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Terms and Conditions</Text>
             <TouchableOpacity
-              onPress={() => router.push("/signup")}
+              onPress={() => router.back()}
               style={styles.closeButton}
               activeOpacity={0.7}
             >
@@ -121,7 +122,12 @@ export default function TermsScreen() {
             <TouchableOpacity
               style={styles.buttonWrapper}
               activeOpacity={0.8}
-              onPress={() => router.push("/signup")}
+              onPress={() =>
+                router.push({
+                  pathname: "/signup",
+                  params: { ...(params || {}), accepted: "1" },
+                })
+              }
             >
               <ImageBackground
                 source={require("../../assets/images/green-dialogue.png")}

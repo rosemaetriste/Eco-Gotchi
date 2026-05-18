@@ -1,5 +1,5 @@
 import * as Font from "expo-font";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -9,7 +9,6 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,10 +16,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 
 const { width, height } = Dimensions.get("window");
-const OTP_LENGTH = 4;
+const OTP_LENGTH = 6;
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const COLOR = {
@@ -39,9 +41,11 @@ const COLOR = {
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { email } = useLocalSearchParams();
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [focusedIndex, setFocusedIndex] = useState(null);
+  const [verifying, setVerifying] = useState(false);
 
   const inputRefs = useRef([]);
 
@@ -142,6 +146,76 @@ export default function ResetPasswordScreen() {
     }
   };
 
+  // ── API configuration ──────────────────────────────────────────────────────
+  const getApiBaseUrl = () => {
+    const extraApi =
+      Constants.manifest?.extra?.API_BASE_URL ||
+      Constants.expoConfig?.extra?.API_BASE_URL ||
+      null;
+    if (extraApi) return extraApi;
+
+    const dbgHost = Constants.manifest?.debuggerHost;
+    const hostFromDbg = dbgHost ? dbgHost.split(":")[0] : null;
+
+    if (Platform.OS === "android") {
+      if (hostFromDbg) return `http://${hostFromDbg}:4000`;
+      return "http://10.0.2.2:4000";
+    }
+
+    const host = hostFromDbg || "localhost";
+    return `http://${host}:4000`;
+  };
+
+  // ── Confirm OTP ────────────────────────────────────────────────────────────
+  const handleConfirm = async () => {
+    const otpString = otp.join("");
+    if (otpString.length !== OTP_LENGTH) {
+      Alert.alert("Incomplete", "Please enter all 6 digits of the OTP.");
+      return;
+    }
+
+    if (!email) {
+      Alert.alert("Error", "Email not found. Please go back and try again.");
+      return;
+    }
+
+    setVerifying(true);
+    const API_BASE_URL = getApiBaseUrl();
+
+    try {
+      console.log(`Verifying OTP ${otpString} for ${email}`);
+      const resp = await fetch(`${API_BASE_URL}/api/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp: otpString }),
+      });
+
+      let payload = null;
+      try {
+        payload = await resp.json();
+      } catch (jsonErr) {
+        console.warn("Failed to parse response", jsonErr);
+      }
+
+      if (resp.ok) {
+        console.log("OTP verified successfully!");
+        Alert.alert("Success", "OTP verified! Now set your new password.");
+        router.push({
+          pathname: "/enter-password",
+          params: { email: email.trim() },
+        });
+      } else {
+        const errorMsg = payload?.error || "Invalid OTP. Please try again.";
+        Alert.alert("Verification Failed", errorMsg);
+      }
+    } catch (err) {
+      console.error("Error verifying OTP:", err);
+      Alert.alert("Error", "Failed to verify OTP. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   // ── Button press ────────────────────────────────────────────────────────────
   const handlePressIn = () =>
     Animated.spring(buttonScale, {
@@ -230,7 +304,7 @@ export default function ResetPasswordScreen() {
             <View style={styles.formCard}>
               <View style={styles.cardAccentBar} />
 
-              <Text style={styles.label}>4-Digit Code</Text>
+              <Text style={styles.label}>6-Digit Code</Text>
 
               {/* OTP boxes */}
               <View style={styles.otpRow}>
@@ -299,7 +373,8 @@ export default function ResetPasswordScreen() {
                   activeOpacity={0.92}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
-                  onPress={() => console.log("Confirm OTP")}
+                  onPress={handleConfirm}
+                  disabled={verifying}
                   style={styles.buttonTouchable}
                 >
                   <ImageBackground
@@ -307,7 +382,9 @@ export default function ResetPasswordScreen() {
                     style={styles.buttonBackground}
                     resizeMode="stretch"
                   >
-                    <Text style={styles.buttonText}>CONFIRM</Text>
+                    <Text style={styles.buttonText}>
+                      {verifying ? "VERIFYING..." : "CONFIRM"}
+                    </Text>
                   </ImageBackground>
                 </TouchableOpacity>
               </Animated.View>

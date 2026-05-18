@@ -9,10 +9,10 @@ import {
   TouchableOpacity,
   Animated,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ── Tab screens ──────────────────────────────────────────────────────────────
 import HomeScreen, { EcoModal, DeadScreen, MaxAchievementScreen } from "./home";
@@ -109,7 +109,9 @@ export default function App() {
         if (!savedLogs || savedLogs.length === 0) return;
 
         setLogs(savedLogs);
-        setTotalPoints(savedLogs.reduce((sum, log) => sum + (log.points || 0), 0));
+        setTotalPoints(
+          savedLogs.reduce((sum, log) => sum + (log.points || 0), 0),
+        );
         setTodayPoints(
           savedLogs
             .filter((log) => sameDay(new Date(log.ts), new Date()))

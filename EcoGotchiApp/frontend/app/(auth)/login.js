@@ -2,13 +2,14 @@ import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import Constants from "expo-constants";
+import { Alert } from "react-native";
 import {
   Animated,
   Dimensions,
   Easing,
   Image,
   ImageBackground,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -16,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 
@@ -30,6 +32,7 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState("");
 
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const blink = useRef(new Animated.Value(1)).current;
@@ -95,8 +98,22 @@ export default function LoginScreen() {
     }
   }, [fontsLoaded]);
 
-  // Validation Logic
-  const handleLogin = () => {
+  // API helper
+  const getApiBaseUrl = () => {
+    const extraApi =
+      Constants.manifest?.extra?.API_BASE_URL ||
+      Constants.expoConfig?.extra?.API_BASE_URL ||
+      null;
+    if (extraApi) return extraApi;
+
+    const dbgHost = Constants.manifest?.debuggerHost;
+    const hostFromDbg = dbgHost ? dbgHost.split(":")[0] : null;
+    const host = hostFromDbg || "localhost";
+    return `http://${host}:4000`;
+  };
+
+  // Validation + backend login
+  const handleLogin = async () => {
     let isValid = true;
     setEmailError("");
     setPasswordError("");
@@ -120,7 +137,26 @@ export default function LoginScreen() {
     }
 
     if (isValid) {
-      router.push("/(tabs)");
+      setLoading(true);
+      try {
+        const API_BASE_URL = getApiBaseUrl();
+        const resp = await fetch(`${API_BASE_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        const payload = await resp.json();
+        if (resp.ok) {
+          router.push("/(tabs)");
+        } else {
+          Alert.alert("Login failed", payload.error || "Invalid credentials");
+        }
+      } catch (err) {
+        console.error("Login error", err);
+        Alert.alert("Network error", "Unable to contact server.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

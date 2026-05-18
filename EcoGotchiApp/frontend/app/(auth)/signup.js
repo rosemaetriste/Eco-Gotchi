@@ -2,13 +2,15 @@ import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import Constants from "expo-constants";
+import { Alert } from "react-native";
 import {
   Animated,
   Dimensions,
   Easing,
   Image,
   ImageBackground,
-  SafeAreaView,
+  Modal,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width, height } = Dimensions.get("window");
 
@@ -33,6 +36,7 @@ export default function SignUpScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [accepted, setAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Validation States
   const [emailError, setEmailError] = useState("");
@@ -104,10 +108,23 @@ export default function SignUpScreen() {
     }
   }, [fontsLoaded]);
 
-  // Validation Logic
-  const handleSignUp = () => {
+  const getApiBaseUrl = () => {
+    const extraApi =
+      Constants.manifest?.extra?.API_BASE_URL ||
+      Constants.expoConfig?.extra?.API_BASE_URL ||
+      null;
+    if (extraApi) return extraApi;
+
+    const dbgHost = Constants.manifest?.debuggerHost;
+    const hostFromDbg = dbgHost ? dbgHost.split(":")[0] : null;
+    const host = hostFromDbg || "localhost";
+    return `http://${host}:4000`;
+  };
+
+  // Validation + backend signup
+  const handleSignUp = async () => {
     let isValid = true;
-    
+
     setEmailError("");
     setPasswordError("");
     setConfirmPasswordError("");
@@ -145,8 +162,27 @@ export default function SignUpScreen() {
     }
 
     if (isValid) {
-      console.log("Sign up triggered securely");
-      router.push("/(tabs)"); 
+      try {
+        const API_BASE_URL = getApiBaseUrl();
+        const resp = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password, name: "User" }),
+        });
+        const payload = await resp.json();
+        if (resp.ok) {
+          Alert.alert("Success", "Account created. You can now log in.");
+          router.push("/login");
+        } else {
+          Alert.alert(
+            "Signup failed",
+            payload.error || "Unable to create account",
+          );
+        }
+      } catch (err) {
+        console.error("Signup error", err);
+        Alert.alert("Network error", "Unable to contact server.");
+      }
     }
   };
 
@@ -207,7 +243,10 @@ export default function SignUpScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
-                style={[styles.input, emailError ? styles.inputErrorBorder : null]}
+                style={[
+                  styles.input,
+                  emailError ? styles.inputErrorBorder : null,
+                ]}
                 placeholder="username@gmail.com"
                 placeholderTextColor="rgba(91, 63, 45, 0.4)"
                 value={email}
@@ -218,13 +257,20 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : null}
             </View>
 
             {/* Password Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Password</Text>
-              <View style={[styles.passwordContainer, passwordError ? styles.inputErrorBorder : null]}>
+              <View
+                style={[
+                  styles.passwordContainer,
+                  passwordError ? styles.inputErrorBorder : null,
+                ]}
+              >
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="••••••••••••••••"
@@ -248,13 +294,20 @@ export default function SignUpScreen() {
                   />
                 </TouchableOpacity>
               </View>
-              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
             </View>
 
             {/* Confirm Password Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Confirm Password</Text>
-              <View style={[styles.passwordContainer, confirmPasswordError ? styles.inputErrorBorder : null]}>
+              <View
+                style={[
+                  styles.passwordContainer,
+                  confirmPasswordError ? styles.inputErrorBorder : null,
+                ]}
+              >
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="••••••••••••••••"
@@ -272,13 +325,17 @@ export default function SignUpScreen() {
                   style={styles.eyeButton}
                 >
                   <Ionicons
-                    name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                    name={
+                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                    }
                     size={22}
                     color="#59483D"
                   />
                 </TouchableOpacity>
               </View>
-              {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
+              {confirmPasswordError ? (
+                <Text style={styles.errorText}>{confirmPasswordError}</Text>
+              ) : null}
             </View>
 
             {/* Terms Checkbox */}
@@ -294,9 +351,9 @@ export default function SignUpScreen() {
                 >
                   <View
                     style={[
-                      styles.checkbox, 
+                      styles.checkbox,
                       accepted && styles.checkboxChecked,
-                      termsError ? styles.checkboxErrorBorder : null
+                      termsError ? styles.checkboxErrorBorder : null,
                     ]}
                   >
                     {accepted && <Text style={styles.checkmark}>✓</Text>}
@@ -306,7 +363,7 @@ export default function SignUpScreen() {
                 <Text style={styles.checkboxText}>I accept the </Text>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/terms")}
+                  onPress={() => setShowTermsModal(true)}
                   activeOpacity={0.7}
                   hitSlop={{ top: 15, bottom: 15, left: 5, right: 5 }}
                 >
@@ -315,7 +372,9 @@ export default function SignUpScreen() {
 
                 <Text style={styles.checkboxText}>.</Text>
               </View>
-              {termsError ? <Text style={styles.errorTextTerms}>{termsError}</Text> : null}
+              {termsError ? (
+                <Text style={styles.errorTextTerms}>{termsError}</Text>
+              ) : null}
             </View>
 
             {/* Submit Button & Switch Link */}
@@ -348,7 +407,100 @@ export default function SignUpScreen() {
           </View>
         </Animated.View>
       </ScrollView>
+      <Modal
+        visible={showTermsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTermsModal(false)}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Terms and Conditions</Text>
+                <TouchableOpacity
+                  onPress={() => setShowTermsModal(false)}
+                  style={styles.modalCloseButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.closeText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalDivider} />
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={true}
+              >
+                <Section
+                  number="1"
+                  title="Acceptance of Terms"
+                  body="By accessing Ecogotchi, you agree to be bound by these Terms and Conditions. This application is a tool for environmental awareness and gamified carbon tracking."
+                />
+                <Section
+                  number="2"
+                  title="Accuracy of Calculations"
+                  body="Carbon savings are calculated based on standardized emission factors for various vehicle classes (e.g., Sedans, Tricycles, Jeepneys). While we strive for precision, these figures are estimates intended for educational purposes."
+                />
+                <Section
+                  number="3"
+                  title="Location Data & Privacy"
+                  body="To verify transportation modes and distance, Ecogotchi requires access to your device's location services. This data is encrypted, stored securely, and used solely for gameplay logic. We do not sell or share individual movement data with third parties."
+                />
+                <Section
+                  number="4"
+                  title="User Safety"
+                  body="Users must prioritize physical safety. Do not use the application while operating a vehicle or in any situation where distraction may lead to injury. Ecogotchi is not liable for accidents occurring during use."
+                />
+                <Section
+                  number="5"
+                  title="Virtual Assets"
+                  body="EcoPoints, badges, and pet growth levels are virtual assets with no real-world currency value. They are non-transferable and may be reset in the event of platform updates or account deletion."
+                />
+                <Section
+                  number="6"
+                  title="Changes to Terms"
+                  body="Ecogotchi reserves the right to update these Terms at any time. Continued use of the application after changes are posted constitutes your acceptance of the revised Terms."
+                />
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.buttonWrapper}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setAccepted(true);
+                    setTermsError("");
+                    setShowTermsModal(false);
+                  }}
+                >
+                  <ImageBackground
+                    source={require("../../assets/images/green-dialogue.png")}
+                    style={styles.buttonBackground}
+                    resizeMode="stretch"
+                  >
+                    <Text style={styles.buttonText}>I ACCEPT</Text>
+                  </ImageBackground>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function Section({ number, title, body }) {
+  return (
+    <View style={styles.modalSection}>
+      <View style={styles.sectionNumberContainer}>
+        <Text style={styles.sectionNumber}>{number}</Text>
+      </View>
+      <View style={styles.sectionBody}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionText}>{body}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -620,5 +772,116 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: LIGHT_BLACK,
     marginTop: -1,
+  },
+
+  modalSafe: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+
+  modalCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    overflow: "hidden",
+    maxHeight: height * 0.85,
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+
+  modalTitle: {
+    fontFamily: "System",
+    fontSize: 18,
+    fontWeight: "800",
+    color: LIGHT_BLACK,
+    flex: 1,
+    marginRight: 10,
+  },
+
+  modalCloseButton: {
+    width: 42,
+    height: 42,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+
+  closeText: {
+    fontSize: 22,
+    color: LIGHT_BLACK,
+  },
+
+  modalDivider: {
+    height: 1,
+    backgroundColor: "#E2E2E2",
+    marginHorizontal: 20,
+  },
+
+  modalScroll: {
+    paddingHorizontal: 20,
+  },
+
+  modalScrollContent: {
+    paddingVertical: 18,
+  },
+
+  modalSection: {
+    flexDirection: "row",
+    marginBottom: 18,
+  },
+
+  sectionNumberContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: GREEN,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  sectionNumber: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+
+  sectionBody: {
+    flex: 1,
+  },
+
+  sectionTitle: {
+    fontFamily: "System",
+    fontSize: 14,
+    fontWeight: "700",
+    color: LIGHT_BLACK,
+    marginBottom: 4,
+  },
+
+  sectionText: {
+    fontFamily: "System",
+    fontSize: 13,
+    color: LIGHT_BLACK,
+    lineHeight: 19,
+  },
+
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E2E2",
   },
 });

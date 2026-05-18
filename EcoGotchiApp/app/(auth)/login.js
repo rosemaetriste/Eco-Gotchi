@@ -177,7 +177,10 @@ export default function LoginScreen() {
             <View>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
-                style={[styles.input, emailError ? styles.inputErrorBorder : null]}
+                style={[
+                  styles.input,
+                  emailError ? styles.inputErrorBorder : null,
+                ]}
                 placeholder="username@gmail.com"
                 placeholderTextColor="rgba(91, 63, 45, 0.4)"
                 value={email}
@@ -188,13 +191,22 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              {emailError ? <Text style={styles.errorTextAbsolute}>{emailError}</Text> : null}
+              {emailError ? (
+                <Text style={styles.errorTextAbsolute}>{emailError}</Text>
+              ) : null}
             </View>
 
             {/* Password Container */}
             <View>
-              <Text style={[styles.inputLabel, { marginTop: 24 }]}>Password</Text>
-              <View style={[styles.passwordContainer, passwordError ? styles.inputErrorBorder : null]}>
+              <Text style={[styles.inputLabel, { marginTop: 24 }]}>
+                Password
+              </Text>
+              <View
+                style={[
+                  styles.passwordContainer,
+                  passwordError ? styles.inputErrorBorder : null,
+                ]}
+              >
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="••••••••••••••••"
@@ -218,11 +230,19 @@ export default function LoginScreen() {
                   />
                 </TouchableOpacity>
               </View>
-              {passwordError ? <Text style={styles.errorTextAbsolutePassword}>{passwordError}</Text> : null}
+              {passwordError ? (
+                <Text style={styles.errorTextAbsolutePassword}>
+                  {passwordError}
+                </Text>
+              ) : null}
             </View>
 
             {/* VISIT YOUR PET Button */}
-            <TouchableOpacity style={styles.buttonWrapper} activeOpacity={0.8} onPress={handleLogin}>
+            <TouchableOpacity
+              style={styles.buttonWrapper}
+              activeOpacity={0.8}
+              onPress={handleLogin}
+            >
               <ImageBackground
                 source={require("../../assets/images/green-dialogue.png")}
                 style={styles.buttonBackground}
@@ -235,7 +255,7 @@ export default function LoginScreen() {
             {/* Forget Password */}
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => router.push("/forgot-password")}
+              onPress={() => router.push("/(auth)/forgot-password")}
             >
               <Text style={styles.forgotText}>
                 Forget Password?{" "}
@@ -426,10 +446,10 @@ const styles = StyleSheet.create({
 
   buttonWrapper: {
     width: "85%",
-    height: 65, 
+    height: 65,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 18, 
+    marginTop: 18,
     alignSelf: "center",
   },
 
@@ -454,7 +474,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: DARK_BLACK,
     textAlign: "center",
-    marginTop: 5, 
+    marginTop: 5,
   },
 
   forgotLink: {

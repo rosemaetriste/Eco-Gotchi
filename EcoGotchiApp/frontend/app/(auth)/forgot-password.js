@@ -9,7 +9,6 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,21 +17,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 
 const { width, height } = Dimensions.get("window");
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const COLOR = {
-  brown:      "#422F21",
+  brown: "#422F21",
   brownLight: "#7A5C4A",
-  brownFade:  "rgba(91,63,45,0.38)",
-  green:      "#4EC882",
-  greenGlow:  "rgba(78,200,130,0.28)",
-  white:      "#FFFFFF",
-  card:       "rgba(255,255,255,0.55)",
+  brownFade: "rgba(91,63,45,0.38)",
+  green: "#4EC882",
+  greenGlow: "rgba(78,200,130,0.28)",
+  white: "#FFFFFF",
+  card: "rgba(255,255,255,0.55)",
   cardBorder: "rgba(255,255,255,0.72)",
-  inputBg:    "#FAFFF8",
-  shadow:     "#000",
+  inputBg: "#FAFFF8",
+  shadow: "#000",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -40,16 +41,49 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
 
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  const [email, setEmail]             = useState("");
-  const [isFocused, setIsFocused]     = useState(false);
+  const [email, setEmail] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const getApiBaseUrl = () => {
+    // Prefer debuggerHost when running in Expo dev mode (gives LAN IP)
+    const dbgHost = Constants.manifest?.debuggerHost;
+    const hostFromDbg = dbgHost ? dbgHost.split(":")[0] : null;
+
+    // Allow overriding via app.json extra (recommended for physical devices)
+    const extraApi =
+      Constants.manifest?.extra?.API_BASE_URL ||
+      Constants.expoConfig?.extra?.API_BASE_URL ||
+      null;
+    if (extraApi) return extraApi;
+
+    if (Platform.OS === "android") {
+      // Android emulator: prefer debugger host if available, otherwise 10.0.2.2
+      if (hostFromDbg) return `http://${hostFromDbg}:4000`;
+      return "http://10.0.2.2:4000";
+    }
+
+    // iOS simulator or web: debugger host or localhost. On physical devices,
+    // 'localhost' will refer to the device itself and will NOT reach your
+    // development machine. Set `expo.extra.API_BASE_URL` in frontend/app.json
+    // to `http://<YOUR_COMPUTER_IP>:4000` when testing on a phone.
+    const host = hostFromDbg || "localhost";
+    const url = `http://${host}:4000`;
+    if (host === "localhost" && !__DEV__) {
+      console.warn(
+        "Using localhost for API on a physical device may fail. Set expo.extra.API_BASE_URL in app.json to your computer IP.",
+      );
+    }
+    return url;
+  };
 
   // Animated values
-  const fadeIn      = useRef(new Animated.Value(0)).current;
-  const slideUp     = useRef(new Animated.Value(24)).current;
-  const logoY       = useRef(new Animated.Value(-4)).current;
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideUp = useRef(new Animated.Value(24)).current;
+  const logoY = useRef(new Animated.Value(-4)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const inputGlow   = useRef(new Animated.Value(0)).current;
-  const labelSlide  = useRef(new Animated.Value(0)).current;
+  const inputGlow = useRef(new Animated.Value(0)).current;
+  const labelSlide = useRef(new Animated.Value(0)).current;
 
   // ── Font loading ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -110,7 +144,7 @@ export default function ForgotPasswordScreen() {
     Animated.timing(inputGlow, {
       toValue: isFocused ? 1 : 0,
       duration: 250,
-      useNativeDriver: false,   // border/shadow can't use native driver
+      useNativeDriver: false, // border/shadow can't use native driver
     }).start();
 
     Animated.timing(labelSlide, {
@@ -122,7 +156,10 @@ export default function ForgotPasswordScreen() {
 
   // ── Button press ──────────────────────────────────────────────────────────
   const handlePressIn = () =>
-    Animated.spring(buttonScale, { toValue: 0.95, useNativeDriver: true }).start();
+    Animated.spring(buttonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
 
   const handlePressOut = () =>
     Animated.spring(buttonScale, {
@@ -147,7 +184,11 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
+      />
 
       {/* ── Background ─────────────────────────────────────────────────── */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -187,7 +228,6 @@ export default function ForgotPasswordScreen() {
               { opacity: fadeIn, transform: [{ translateY: slideUp }] },
             ]}
           >
-
             {/* ── Logo ─────────────────────────────────────────────────── */}
             <Animated.View style={{ transform: [{ translateY: logoY }] }}>
               <Image
@@ -207,12 +247,12 @@ export default function ForgotPasswordScreen() {
 
             {/* ── Subheadline ──────────────────────────────────────────── */}
             <Text style={styles.subheadline}>
-              Enter your email and we'll send a{"\n"}pin code to confirm your identity.
+              Enter your email and we'll send a{"\n"}pin code to confirm your
+              identity.
             </Text>
 
             {/* ── Form card ────────────────────────────────────────────── */}
             <View style={styles.formCard}>
-
               {/* Decorative top accent line */}
               <View style={styles.cardAccentBar} />
 
@@ -274,7 +314,49 @@ export default function ForgotPasswordScreen() {
                   activeOpacity={0.92}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
-                  onPress={() => router.push("/reset-password")}
+                  onPress={async () => {
+                    if (!email || email.trim() === "") {
+                      console.warn("No email entered");
+                      return;
+                    }
+                    const API_BASE_URL = getApiBaseUrl();
+                    console.log(
+                      "Attempting to send OTP to",
+                      email,
+                      "using",
+                      API_BASE_URL,
+                    );
+                    try {
+                      setSending(true);
+                      const resp = await fetch(`${API_BASE_URL}/api/send-otp`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: email.trim() }),
+                      });
+                      let payload = null;
+                      try {
+                        payload = await resp.json();
+                      } catch (jsonErr) {
+                        console.warn("Failed to parse JSON response", jsonErr);
+                      }
+                      console.log("OTP response:", resp.status, payload);
+                      if (resp.ok) {
+                        router.push({
+                          pathname: "/reset-password",
+                          params: { email: email.trim() },
+                        });
+                      } else {
+                        console.warn(
+                          "Failed to send OTP:",
+                          payload || resp.statusText || resp.status,
+                        );
+                      }
+                    } catch (err) {
+                      console.error("Error sending OTP:", err?.message || err);
+                    } finally {
+                      setSending(false);
+                    }
+                  }}
                   style={styles.buttonTouchable}
                 >
                   <ImageBackground
@@ -282,7 +364,9 @@ export default function ForgotPasswordScreen() {
                     style={styles.buttonBackground}
                     resizeMode="stretch"
                   >
-                    <Text style={styles.buttonText}>SEND OTP</Text>
+                    <Text style={styles.buttonText}>
+                      {sending ? "SENDING..." : "SEND OTP"}
+                    </Text>
                   </ImageBackground>
                 </TouchableOpacity>
               </Animated.View>
@@ -298,7 +382,6 @@ export default function ForgotPasswordScreen() {
                   <Text style={styles.loginLinkBold}>Back to Login</Text>
                 </Text>
               </TouchableOpacity>
-
             </View>
           </Animated.View>
         </ScrollView>
@@ -340,7 +423,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     shadowColor: COLOR.shadow,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
   },

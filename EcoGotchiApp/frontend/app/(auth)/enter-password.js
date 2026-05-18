@@ -1,6 +1,6 @@
 import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -10,7 +10,6 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,7 +17,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 
 const { width, height } = Dimensions.get("window");
 
@@ -40,12 +42,14 @@ const COLOR = {
 
 export default function EnterNewPasswordScreen() {
   const router = useRouter();
+  const { email } = useLocalSearchParams();
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [resetting, setResetting] = useState(false);
 
   // Animated values
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -123,6 +127,86 @@ export default function EnterNewPasswordScreen() {
   const handleBlur = (field) => {
     setFocusedField(null);
     animateGlow(field === "new" ? glowNew : glowConfirm, false);
+  };
+
+  // ── API configuration ──────────────────────────────────────────────────────
+  const getApiBaseUrl = () => {
+    const extraApi =
+      Constants.manifest?.extra?.API_BASE_URL ||
+      Constants.expoConfig?.extra?.API_BASE_URL ||
+      null;
+    if (extraApi) return extraApi;
+
+    const dbgHost = Constants.manifest?.debuggerHost;
+    const hostFromDbg = dbgHost ? dbgHost.split(":")[0] : null;
+
+    if (Platform.OS === "android") {
+      if (hostFromDbg) return `http://${hostFromDbg}:4000`;
+      return "http://10.0.2.2:4000";
+    }
+
+    const host = hostFromDbg || "localhost";
+    return `http://${host}:4000`;
+  };
+
+  // ── Reset password handler ──────────────────────────────────────────────────
+  const handleResetPassword = async () => {
+    if (!newPassword) {
+      Alert.alert("Error", "Please enter a new password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    if (!email) {
+      Alert.alert("Error", "Email not found. Please go back and try again.");
+      return;
+    }
+
+    setResetting(true);
+    const API_BASE_URL = getApiBaseUrl();
+
+    try {
+      console.log(`Resetting password for ${email}`);
+      const resp = await fetch(`${API_BASE_URL}/api/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), newPassword }),
+      });
+
+      let payload = null;
+      try {
+        payload = await resp.json();
+      } catch (jsonErr) {
+        console.warn("Failed to parse response", jsonErr);
+      }
+
+      if (resp.ok) {
+        console.log("Password reset successfully!");
+        Alert.alert(
+          "Success",
+          "Password reset successfully! You can now log in with your new password.",
+        );
+        router.push("/login");
+      } else {
+        const errorMsg =
+          payload?.error || "Failed to reset password. Please try again.";
+        Alert.alert("Error", errorMsg);
+      }
+    } catch (err) {
+      console.error("Error resetting password:", err);
+      Alert.alert("Error", "Failed to reset password. Please try again.");
+    } finally {
+      setResetting(false);
+    }
   };
 
   // ── Button press ────────────────────────────────────────────────────────────
@@ -349,7 +433,8 @@ export default function EnterNewPasswordScreen() {
                   activeOpacity={0.92}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
-                  onPress={() => router.push("/(tabs)/reset-password")}
+                  onPress={handleResetPassword}
+                  disabled={resetting}
                   style={styles.buttonTouchable}
                 >
                   <ImageBackground
@@ -357,7 +442,9 @@ export default function EnterNewPasswordScreen() {
                     style={styles.buttonBackground}
                     resizeMode="stretch"
                   >
-                    <Text style={styles.buttonText}>RESET PASSWORD</Text>
+                    <Text style={styles.buttonText}>
+                      {resetting ? "RESETTING..." : "RESET PASSWORD"}
+                    </Text>
                   </ImageBackground>
                 </TouchableOpacity>
               </Animated.View>

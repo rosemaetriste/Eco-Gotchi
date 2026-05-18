@@ -7,12 +7,12 @@ import {
   Easing,
   Image,
   ImageBackground,
-  SafeAreaView,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "../../components/styles.js";
 
 const { width, height } = Dimensions.get("window");
