@@ -28,7 +28,7 @@ export const STAGES = [
   { name: "Maturing", max: 30000, color: "#2d6a4f", tc: "#fff" },
 ];
 
-export const MAX_PTS = 67000; // 2000+5000+10000+20000+30000
+export const MAX_PTS = 100000; // Eco Points cap at 100,000
 
 export const TRANSPORT_ACTIONS = [
   { id: "bike", label: "Biked instead of driving", rate: 0.21 },

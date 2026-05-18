@@ -146,8 +146,15 @@ export default function App() {
   const applyPoints = useCallback((pts) => {
     if (pts <= 0) return;
     setTodayPoints((p) => p + pts);
-    setTotalPoints((prev) => prev + pts);
-  }, []);
+    setTotalPoints((prev) => {
+      const newTotal = prev + pts;
+      // Cap points at MAX_PTS (100,000)
+      if (newTotal >= MAX_PTS && !isMaxed) {
+        setIsMaxed(true);
+      }
+      return Math.min(newTotal, MAX_PTS);
+    });
+  }, [isMaxed]);
 
   const handleLogEcoAction = useCallback(
     (actionData) => {

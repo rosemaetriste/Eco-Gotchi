@@ -31,6 +31,7 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -43,6 +44,7 @@ export default function SignUpScreen() {
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [termsError, setTermsError] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const blink = useRef(new Animated.Value(1)).current;
@@ -129,8 +131,14 @@ export default function SignUpScreen() {
     setPasswordError("");
     setConfirmPasswordError("");
     setTermsError("");
+    setNameError("");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!name.trim()) {
+      setNameError("Name is required.");
+      isValid = false;
+    }
 
     if (!email.trim()) {
       setEmailError("Email address is required.");
@@ -167,7 +175,7 @@ export default function SignUpScreen() {
         const resp = await fetch(`${API_BASE_URL}/api/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim(), password, name: "User" }),
+          body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
         });
         const payload = await resp.json();
         if (resp.ok) {
@@ -239,6 +247,28 @@ export default function SignUpScreen() {
 
           {/* Form Card */}
           <View style={styles.formCard}>
+            {/* Name Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  nameError ? styles.inputErrorBorder : null,
+                ]}
+                placeholder="Your name"
+                placeholderTextColor="rgba(91, 63, 45, 0.4)"
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  if (nameError) setNameError("");
+                }}
+                autoCapitalize="words"
+              />
+              {nameError ? (
+                <Text style={styles.errorText}>{nameError}</Text>
+              ) : null}
+            </View>
+
             {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>

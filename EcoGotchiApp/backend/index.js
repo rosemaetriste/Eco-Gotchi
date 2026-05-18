@@ -93,17 +93,40 @@ const buildCarbonEstimatePayload = (transportId, distance) => ({
     process.env.CARBON_DEFAULT_VEHICLE_MODEL_ID || "toyota_prius_2015",
 });
 
-const users = [
-  {
-    id: 1,
-    email: "user@example.com",
-    password: "password123",
-    name: "Eco Guardian",
-  },
-];
+const users = [];
 
-app.post("/api/auth/login", (req, res) => {
+// Firebase Admin SDK - Users collection reference
+let usersCollection = null;
+if (firestore) {
+  usersCollection = firestore.collection("Users");
+}
+
+app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
+  
+  // Try to find user in Firebase Firestore first
+  if (usersCollection) {
+    try {
+      const querySnapshot = await usersCollection
+        .where("email", "==", email)
+        .where("password", "==", password)
+        .limit(1)
+        .get();
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const userData = doc.data();
+        return res.json({
+          user: { id: doc.id, email: userData.email, name: userData.name },
+          token: "firebase-token",
+        });
+      }
+    } catch (error) {
+      console.error("Firebase login query error:", error);
+    }
+  }
+  
+  // Fallback to in-memory users (for demo/testing)
   const user = users.find(
     (item) => item.email === email && item.password === password,
   );
@@ -118,7 +141,7 @@ app.post("/api/auth/login", (req, res) => {
   });
 });
 
-app.post("/api/auth/signup", (req, res) => {
+app.post("/api/auth/signup", async (req, res) => {
   const { email, password, name } = req.body;
 
   if (!email || !password || !name) {
@@ -127,6 +150,35 @@ app.post("/api/auth/signup", (req, res) => {
       .json({ error: "Name, email, and password are required." });
   }
 
+  // Check if user exists in Firebase Firestore first
+  if (usersCollection) {
+    try {
+      const querySnapshot = await usersCollection
+        .where("email", "==", email)
+        .limit(1)
+        .get();
+      
+      if (!querySnapshot.empty) {
+        return res.status(409).json({ error: "Email already in use." });
+      }
+      
+      // Save new user to Firebase Firestore "Users" collection
+      const docRef = await usersCollection.add({
+        email,
+        password,
+        name,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      const newUser = { id: docRef.id, email, name };
+      return res.status(201).json({ user: newUser, token: "firebase-token" });
+    } catch (error) {
+      console.error("Firebase signup error:", error);
+      return res.status(500).json({ error: "Unable to create account in database." });
+    }
+  }
+
+  // Fallback to in-memory storage (for demo/testing without Firebase)
   const exists = users.some((item) => item.email === email);
   if (exists) {
     return res.status(409).json({ error: "Email already in use." });
